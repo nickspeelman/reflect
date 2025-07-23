@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Private Journaling App</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>Journal</h1>
+
+       <div class="past-entries">
+      <h2 id="entrySectionTitle">Recent Entries</h2>
+
+      <ul id="entryList"></ul>
+    </div>
+
+    <div class="prompt-section">
+      <label for="prompt">Prompt:</label>
+      <div id="prompt" class="prompt-text"></div>
+      <button id="newPrompt">New Prompt</button>
+    </div>
+
+    <div class="entry-section">
+      <textarea id="journalEntry" maxlength="2000" placeholder="Write your response here..."></textarea>
+      <div id="charCount">2000</div>
+      <button id="submitEntry">Submit Entry</button>
+    </div>
+
+ 
+  </div>
+
+  <div id="entryModal" class="modalOverlay hidden">
+    <div class="modalBox">
+        <button class="close-button" id="closeModal">&times;</button>
+        <div id="modalContent"></div>
+    </div>
+    </div>
+
+
+  <script type="module">
+    import * as transformers from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.5.0/dist/transformers.min.js';
+    window.transformers = transformers; // expose globally so ai.js can use it
+  </script>
+
+
+  <script type ="module" src="js/app.js"></script>
+
+
+</body>
+</html>
