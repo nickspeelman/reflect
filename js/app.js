@@ -97,12 +97,16 @@ function displayRelevantEntries(newEntry = null) {
 
   let displayEntries = [];
 
-  if (newEntry) {
-    // Show 3 most relevant past entries (exclude new one)
-    const pastEntries = entries.filter(
-      e => e.id !== newEntry.id && Array.isArray(e.embedding)
-    );
+if (newEntry) {
+  const pastEntries = entries.filter(
+    e => e.id !== newEntry.id && Array.isArray(e.embedding)
+  );
 
+  if (pastEntries.length === 0) {
+    // First-ever entry — show it instead of skipping
+    displayEntries = [newEntry];
+    entrySectionTitle.textContent = "Recent Entry";
+  } else {
     const scored = pastEntries.map(entry => ({
       ...entry,
       relevance: scoreRelevance(newEntry, entry)
@@ -113,7 +117,9 @@ function displayRelevantEntries(newEntry = null) {
       .slice(0, 3);
 
     entrySectionTitle.textContent = "Potentially Relevant Entries";
-  } else {
+  }
+}
+ else {
     // Show 3 most recent entries (newest first)
     displayEntries = entries.slice(-3).reverse();
     entrySectionTitle.textContent = "Recent Entries";
