@@ -39,9 +39,13 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   submitBtn.addEventListener("click", async () => {
-    const text = entryInput.value.trim();
-    if (!text) return;
+  const text = entryInput.value.trim();
+  if (!text) return;
 
+  const splash = document.getElementById("processingSplash");
+  splash.classList.remove("hidden"); // ✅ Show splash
+
+  try {
     const aiData = await processEntry(text);
 
     const entry = {
@@ -57,13 +61,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
     entryInput.value = "";
     charCount.textContent = `${maxChars} characters remaining`;
-    currentPrompt = getRandomPrompt();
-    promptEl.textContent = currentPrompt;
-    displayRelevantEntries(entry);
 
+    // Update prompt
+    currentPrompt = getRandomPrompt();
     promptEl.textContent = "After reviewing these entries, do you have anything to add?";
 
-  });
+    displayRelevantEntries(entry);
+  } catch (err) {
+    console.error("❌ Error during submission:", err);
+    alert("Something went wrong while processing your entry.");
+  } finally {
+    splash.classList.add("hidden"); // ✅ Always hide splash
+  }
+});
+
 
   function saveEntry(entry) {
     const entries = JSON.parse(localStorage.getItem("journalEntries") || "[]");
