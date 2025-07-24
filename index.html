@@ -6,20 +6,19 @@
   <title>Reflect</title>
   <link rel="stylesheet" href="css/styles.css" />
   <link rel="icon" href="favicon.ico" type="image/x-icon">
-  <link rel="icon" type="image/png" sizes="32x32" href="icon-192.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="web-app-manifest-192x192.png">
   <link rel="manifest" href="manifest.json" />
-    <meta name="theme-color" content="#000000">
-
-
+  <meta name="theme-color" content="#000000">
 </head>
+
 <body>
   <div class="container">
     <h1>Reflect</h1>
 
-       <div class="past-entries">
+    <div class="past-entries">
       <h2 id="entrySectionTitle">Recent Entries</h2>
-
       <ul id="entryList"></ul>
+      <a id="viewAllEntries" class="modal-link">View all past entries</a>
     </div>
 
     <div class="prompt-section">
@@ -30,36 +29,69 @@
 
     <div class="entry-section">
       <textarea id="journalEntry" maxlength="2000" placeholder="Write your response here..."></textarea>
-      <div id="charCount">2000</div>
+      <div id="charCount">2000 characters remaining</div>
       <button id="submitEntry">Submit Entry</button>
+      <div>
+      <a id="reopenWelcome" class="modal-link">Help / Welcome</a>
+      </div>
     </div>
-
- 
   </div>
 
+  <!-- 🔍 Modal for viewing full entry -->
   <div id="entryModal" class="modalOverlay hidden">
     <div class="modalBox">
-        <button class="close-button" id="closeModal">&times;</button>
-        <div id="modalContent"></div>
+      <button class="close-button" id="closeModal">&times;</button>
+      <div id="modalContent">
+        <div id="modalPrompt" class="modal-prompt"></div>
+        <div id="modalResponse" class="modal-response"></div>
+      </div>
     </div>
-    
+  </div>
+
+  <!-- ✍️ Processing splash -->
+  <div id="processingSplash" class="modalOverlay hidden">
+    <div class="modalBox">
+      <p style="font-size: 1.3em;">✍️ Reflecting on your entry...</p>
     </div>
-    <div id="processingSplash" class="modalOverlay hidden">
+  </div>
+
+  <div id="allEntriesModal" class="modalOverlay hidden">
   <div class="modalBox">
-    <p style="font-size: 1.3em;">✍️ Reflecting on your entry...</p>
+    <button class="close-button" id="closeAllEntries">&times;</button>
+    <h2>All Past Entries</h2>
+    <ul id="allEntriesList"></ul>
+  </div>
+</div>
+
+<div id="welcomeModal" class="modalOverlay hidden">
+  <div class="modalBox">
+    <h2>Welcome to Reflect</h2>
+    <p>This app is a private space for journaling and reflection. Everything runs locally — your entries never leave your device.</p>
+
+    <h3>How it works:</h3>
+    <ul>
+      <li>You'll receive a gentle journaling prompt.</li>
+      <li>Write your thoughts and submit them.</li>
+      <li>The app summarizes and tags your entry using local AI.</li>
+      <li>You’ll see past entries that might relate to your current one.</li>
+    </ul>
+
+    <p>You can view all your past entries at any time, and everything is saved only in your browser.</p>
+
+    <button id="dismissWelcome">Get Started</button>
   </div>
 </div>
 
 
 
+
+
+  <!-- 📦 Load Transformers.js and app -->
   <script type="module">
     import * as transformers from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.5.0/dist/transformers.min.js';
-    window.transformers = transformers; // expose globally so ai.js can use it
+    window.transformers = transformers;
   </script>
 
-
-  <script type ="module" src="js/app.js"></script>
-
-
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>
