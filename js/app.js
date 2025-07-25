@@ -2,6 +2,7 @@ import { processEntry, scoreRelevance } from './ai.js';
 import { getRandomPrompt } from './prompts.js';
 
 document.addEventListener("DOMContentLoaded", () => {
+  // DOM Elements
   const promptEl = document.getElementById("prompt");
   const newPromptBtn = document.getElementById("newPrompt");
   const entryInput = document.getElementById("journalEntry");
@@ -15,147 +16,110 @@ document.addEventListener("DOMContentLoaded", () => {
   const closeModal = document.getElementById("closeModal");
 
   const viewAllLink = document.getElementById("viewAllEntries");
-const allEntriesModal = document.getElementById("allEntriesModal");
-const allEntriesList = document.getElementById("allEntriesList");
-const closeAllEntries = document.getElementById("closeAllEntries");
+  const allEntriesModal = document.getElementById("allEntriesModal");
+  const allEntriesList = document.getElementById("allEntriesList");
+  const closeAllEntries = document.getElementById("closeAllEntries");
 
-const welcomeModal = document.getElementById("welcomeModal");
-const dismissWelcome = document.getElementById("dismissWelcome");
+  const welcomeModal = document.getElementById("welcomeModal");
+  const dismissWelcome = document.getElementById("dismissWelcome");
+  const reopenWelcome = document.getElementById("reopenWelcome");
 
-const reopenWelcome = document.getElementById("reopenWelcome");
+  const splash = document.getElementById("processingSplash");
 
-reopenWelcome.addEventListener("click", () => {
-  welcomeModal.classList.remove("hidden");
-});
+  // Prompt State
+  let currentPrompt = "";
 
+  // Prompt utility
+  function setPrompt(text) {
+    currentPrompt = text;
+    promptEl.textContent = text;
+  }
 
-if (!localStorage.getItem("hasSeenWelcome")) {
-  welcomeModal.classList.remove("hidden");
-}
+  async function setNewPrompt() {
+    const prompt = await getRandomPrompt();
+    setPrompt(prompt);
+  }
 
-dismissWelcome.addEventListener("click", () => {
-  welcomeModal.classList.add("hidden");
-  localStorage.setItem("hasSeenWelcome", "true");
-});
+  // Show welcome modal if first visit
+  if (!localStorage.getItem("hasSeenWelcome")) {
+    welcomeModal.classList.remove("hidden");
+  }
 
-window.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && !welcomeModal.classList.contains("hidden")) {
+  dismissWelcome.addEventListener("click", () => {
     welcomeModal.classList.add("hidden");
     localStorage.setItem("hasSeenWelcome", "true");
-  }
-});
+  });
 
+  reopenWelcome.addEventListener("click", () => {
+    welcomeModal.classList.remove("hidden");
+  });
 
-viewAllLink.addEventListener("click", () => {
-  const entries = JSON.parse(localStorage.getItem("journalEntries") || "[]");
-
-  if (entries.length === 0) {
-    allEntriesList.innerHTML = "<li>You haven't written any entries yet.</li>";
-  } else {
-    const sorted = entries.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    allEntriesList.innerHTML = "";
-
-    for (const entry of sorted) {
-      const li = document.createElement("li");
-      const date = new Date(entry.timestamp).toLocaleDateString(undefined, {
-        year: "numeric",
-        month: "short",
-        day: "numeric"
-      });
-
-      li.innerHTML = `<strong>${date}</strong><br><em>${entry.prompt}</em><br>${entry.response}<br><br>`;
-      allEntriesList.appendChild(li);
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      if (!welcomeModal.classList.contains("hidden")) {
+        welcomeModal.classList.add("hidden");
+        localStorage.setItem("hasSeenWelcome", "true");
+      }
+      allEntriesModal.classList.add("hidden");
+      modal.classList.add("hidden");
     }
-  }
+  });
 
-  allEntriesModal.classList.remove("hidden");
-});
+  // Handle view all entries modal
+  viewAllLink.addEventListener("click", () => {
+    const entries = JSON.parse(localStorage.getItem("journalEntries") || "[]");
 
-closeAllEntries.addEventListener("click", () => {
-  allEntriesModal.classList.add("hidden");
-});
+    if (entries.length === 0) {
+      allEntriesList.innerHTML = "<li>You haven't written any entries yet.</li>";
+    } else {
+      const sorted = entries.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      allEntriesList.innerHTML = "";
 
-window.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") {
+      for (const entry of sorted) {
+        const li = document.createElement("li");
+        const date = new Date(entry.timestamp).toLocaleDateString(undefined, {
+          year: "numeric",
+          month: "short",
+          day: "numeric"
+        });
+
+        li.innerHTML = `<strong>${date}</strong><br><em>${entry.prompt}</em><br>${entry.response}<br><br>`;
+        allEntriesList.appendChild(li);
+      }
+    }
+
+    allEntriesModal.classList.remove("hidden");
+  });
+
+  closeAllEntries.addEventListener("click", () => {
     allEntriesModal.classList.add("hidden");
-  }
-});
-
+  });
 
   closeModal.addEventListener("click", () => {
     modal.classList.add("hidden");
   });
 
-  window.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") modal.classList.add("hidden");
-  });
-
-  // Character count live update
+  // Live character count
   entryInput.addEventListener("input", () => {
     const remaining = maxChars - entryInput.value.length;
     charCount.textContent = `${remaining} characters remaining`;
   });
 
-  // Prompt management
-  let currentPrompt = "";
-  async function setNewPrompt() {
-    currentPrompt = await getRandomPrompt();
-    promptEl.textContent = currentPrompt;
-  }
-
   newPromptBtn.addEventListener("click", setNewPrompt);
 
-// Submit entry
-submitBtn.addEventListener("click", async () => {
-  const text = entryInput.value.trim();
-  if (!text) return;
-
-  const splash = document.getElementById("processingSplash");
-  splash.classList.remove("hidden");
-
-  // ✅ Force DOM to repaint before heavy work
-  await new Promise(resolve => setTimeout(resolve, 0));
-
-  try {
-    const aiData = await processEntry(text);
-
-
-    const entry = {
-      id: crypto.randomUUID(),
-      timestamp: new Date().toLocaleString('sv-SE'), // ✅ local time, sortable
-      prompt: currentPrompt,
-      response: text,
-      ...aiData
-    };
-
-    saveEntry(entry);
-    console.log("Saved entry:", entry);
-
-    entryInput.value = "";
-    charCount.textContent = `${maxChars} characters remaining`;
-    promptEl.textContent = "After reviewing these entries, do you have anything to add?";
-    displayRelevantEntries(entry);
-  } catch (err) {
-    console.error("❌ Error during submission:", err);
-    alert("Something went wrong while processing your entry.");
-  } finally {
-    splash.classList.add("hidden");
-  }
-});
-
-
-  // Storage
+  // Save journal entry to localStorage
   function saveEntry(entry) {
     const entries = JSON.parse(localStorage.getItem("journalEntries") || "[]");
     entries.push(entry);
     localStorage.setItem("journalEntries", JSON.stringify(entries));
   }
 
+  // Truncate long responses for summaries
   function truncate(text, length) {
     return text.length > length ? text.substring(0, length) + "..." : text;
   }
 
-  // Display entries
+  // Display most relevant (or recent) entries
   function displayRelevantEntries(newEntry = null) {
     const entries = JSON.parse(localStorage.getItem("journalEntries") || "[]");
     entryList.innerHTML = "";
@@ -203,8 +167,7 @@ submitBtn.addEventListener("click", async () => {
         year: "numeric",
         month: "short",
         day: "numeric"
-        });
-
+      });
 
       const summary = entry.summary || truncate(entry.response, 80);
 
@@ -232,7 +195,45 @@ submitBtn.addEventListener("click", async () => {
     }
   }
 
-  // Initial UI setup
+  // Handle journal submission
+  submitBtn.addEventListener("click", async () => {
+    const text = entryInput.value.trim();
+    if (!text) return;
+
+    splash.classList.remove("hidden");
+    await new Promise(resolve => setTimeout(resolve, 0)); // Allow splash to appear
+
+    try {
+      const aiData = await processEntry(text);
+
+      const entry = {
+        id: crypto.randomUUID(),
+        timestamp: new Date().toLocaleString('sv-SE'),
+        prompt: currentPrompt,
+        response: text,
+        ...aiData
+      };
+
+      saveEntry(entry);
+      console.log("Saved entry:", entry);
+
+      entryInput.value = "";
+      charCount.textContent = `${maxChars} characters remaining`;
+
+      // Set follow-up prompt
+      setPrompt("After reviewing these entries, do you have anything to add?");
+
+      // Show relevant entries
+      displayRelevantEntries(entry);
+    } catch (err) {
+      console.error("❌ Error during submission:", err);
+      alert("Something went wrong while processing your entry.");
+    } finally {
+      splash.classList.add("hidden");
+    }
+  });
+
+  // Initial setup
   setNewPrompt();
   displayRelevantEntries();
   charCount.textContent = `${maxChars} characters remaining`;
