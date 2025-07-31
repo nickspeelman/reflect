@@ -280,7 +280,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   // Initial setup
-  setNewPrompt();
-  displayRelevantEntries();
+  await setNewPrompt();
+  await displayRelevantEntries();
   charCount.textContent = `${maxChars} characters remaining`;
 });
