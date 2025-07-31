@@ -199,7 +199,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         entrySectionTitle.textContent = "Potentially Relevant Entries";
       }
     } else {
-      displayEntries = entries.slice(-3).reverse();
+      displayEntries = entries
+        .filter(e => e.timestamp)
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)) // newest first
+        .slice(0, 3);
       entrySectionTitle.textContent = "Recent Entries";
     }
 
