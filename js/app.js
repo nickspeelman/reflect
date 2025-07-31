@@ -53,7 +53,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await migrateToIndexedDB();
 
   async function migrateToIndexedDB() {
-  const db = await window.dbPromise;
+  const db = await dbPromise;
   const storedFlag = localStorage.getItem('migratedToIndexedDB');
 
     if (!storedFlag) {
