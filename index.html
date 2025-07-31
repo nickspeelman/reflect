@@ -19,21 +19,21 @@
 <body>
   <div class="container">
     <!-- 🧠 App Title -->
+               <div>
+        <a id="reopenWelcome" class="modal-link">Help / Welcome</a>
     <h1>Reflect</h1>
 
-    <!-- 🕰️ Past Entries Section -->
-    <div class="past-entries">
-      <h2 id="entrySectionTitle">Recent Entries</h2>
-      <ul id="entryList"></ul>
-      <a id="viewAllEntries" class="modal-link">View all past entries</a>
+
+        <!-- 💬 Prompt Display Section -->
+    <div class="prompt-section">
+           <div id="promptContainer" class="prompt-container">
+        <div id="prompt" class="prompt-text"></div>
+        <button id="newPrompt" class="refresh-button" title="Get new prompt" aria-label="Get new prompt">
+          <img src="assets/refresh_icon.svg" alt="Refresh" width="18" height="18" />
+        </button>
+      </div>
     </div>
 
-    <!-- 💬 Prompt Display Section -->
-    <div class="prompt-section">
-      <label for="prompt">Prompt:</label>
-      <div id="prompt" class="prompt-text"></div>
-      <button id="newPrompt">New Prompt</button>
-    </div>
 
     <!-- ✍️ Journal Entry Form -->
     <div class="entry-section">
@@ -44,10 +44,15 @@
       ></textarea>
       <div id="charCount">2000 characters remaining</div>
       <button id="submitEntry">Submit Entry</button>
-      <div>
-        <a id="reopenWelcome" class="modal-link">Help / Welcome</a>
-      </div>
+
     </div>
+
+        <!-- 🕰️ Past Entries Section -->
+      <div class="past-entries">
+        <h2 id="entrySectionTitle">Recent Entries</h2>
+        <ul id="entryList"></ul>
+        <a id="viewAllEntries" class="modal-link">View all past entries</a>
+      </div>
   </div>
 
   <!-- 🔍 Modal: View a Specific Entry -->

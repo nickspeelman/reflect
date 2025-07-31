@@ -249,3 +249,29 @@ ul#entryList li {
   font-size: 1em;
   cursor: pointer;
 }
+
+.prompt-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.prompt-text {
+  flex: 1;
+  font-size: 1.1rem;
+}
+
+.refresh-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 0;
+  margin: 0;
+  line-height: 1;
+  color: #555;
+}
+
+.refresh-button:hover {
+  color: #007acc;
+}
