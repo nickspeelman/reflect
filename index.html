@@ -109,7 +109,7 @@
   <script type="module">
   import { openDB } from 'https://cdn.jsdelivr.net/npm/idb@7/+esm';
 
-  window.dbPromise = openDB('ReflectDB', 1, {
+  window.dbPromise = openDB('journalDB', 1, {
     upgrade(db) {
       db.createObjectStore('entries', { keyPath: 'id' });
       db.createObjectStore('settings');
