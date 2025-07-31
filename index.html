@@ -12,6 +12,8 @@
   <link rel="icon" type="image/png" sizes="32x32" href="web-app-manifest-192x192.png" />
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#000000" />
+  <script src="https://unpkg.com/idb@7/build/umd.js"></script>
+
 </head>
 
 <body>
@@ -103,5 +105,17 @@
   </script>
 
   <script type="module" src="js/app.js"></script>
+
+  <script type="module">
+  import { openDB } from 'https://cdn.jsdelivr.net/npm/idb@7/+esm';
+
+  window.dbPromise = openDB('ReflectDB', 1, {
+    upgrade(db) {
+      db.createObjectStore('entries', { keyPath: 'id' });
+      db.createObjectStore('settings');
+    }
+  });
+</script>
+
 </body>
 </html>

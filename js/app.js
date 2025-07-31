@@ -1,7 +1,31 @@
 import { processEntry, scoreRelevance } from './ai.js';
 import { getRandomPrompt } from './prompts.js';
+import { dbPromise } from './db.js';
 
-document.addEventListener("DOMContentLoaded", () => {
+async function saveEntry(entry) {
+  const db = await dbPromise;
+  await db.put('entries', entry);
+}
+
+async function getAllEntries() {
+  const db = await dbPromise;
+  return await db.getAll('entries');
+}
+
+async function getSetting(key) {
+  const db = await dbPromise;
+  return await db.get('settings', key);
+}
+
+async function setSetting(key, value) {
+  const db = await dbPromise;
+  await db.put('settings', value, key);
+}
+
+
+
+document.addEventListener("DOMContentLoaded", async () => {
+
   // DOM Elements
   const promptEl = document.getElementById("prompt");
   const newPromptBtn = document.getElementById("newPrompt");
@@ -26,6 +50,30 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const splash = document.getElementById("processingSplash");
 
+  await migrateToIndexedDB();
+
+  async function migrateToIndexedDB() {
+  const db = await window.dbPromise;
+  const storedFlag = localStorage.getItem('migratedToIndexedDB');
+
+    if (!storedFlag) {
+      const entries = JSON.parse(localStorage.getItem('journalEntries') || "[]");
+      for (const entry of entries) {
+        await db.put('entries', entry);
+      }
+
+      const settings = JSON.parse(localStorage.getItem('journalSettings') || "{}");
+      for (const [key, value] of Object.entries(settings)) {
+        await db.put('settings', value, key);
+      }
+
+      localStorage.setItem('migratedToIndexedDB', 'true');
+      localStorage.removeItem('journalEntries');
+      localStorage.removeItem('journalSettings');
+    }
+  }
+
+
   // Prompt State
   let currentPrompt = "";
 
@@ -40,25 +88,26 @@ document.addEventListener("DOMContentLoaded", () => {
     setPrompt(prompt);
   }
 
-  // Show welcome modal if first visit
-  if (!localStorage.getItem("hasSeenWelcome")) {
+  const db = await dbPromise;
+  const hasSeenWelcome = await db.get('settings', 'hasSeenWelcome');
+  if (!hasSeenWelcome) {
     welcomeModal.classList.remove("hidden");
   }
 
-  dismissWelcome.addEventListener("click", () => {
+  dismissWelcome.addEventListener("click", async () => {
     welcomeModal.classList.add("hidden");
-    localStorage.setItem("hasSeenWelcome", "true");
+    await db.put('settings', true, 'hasSeenWelcome');
   });
-
   reopenWelcome.addEventListener("click", () => {
     welcomeModal.classList.remove("hidden");
   });
 
-  window.addEventListener("keydown", (e) => {
+  window.addEventListener("keydown", async (e) => {
     if (e.key === "Escape") {
       if (!welcomeModal.classList.contains("hidden")) {
         welcomeModal.classList.add("hidden");
-        localStorage.setItem("hasSeenWelcome", "true");
+        await setSetting("hasSeenWelcome", true);
+
       }
       allEntriesModal.classList.add("hidden");
       modal.classList.add("hidden");
@@ -66,8 +115,9 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Handle view all entries modal
-  viewAllLink.addEventListener("click", () => {
-    const entries = JSON.parse(localStorage.getItem("journalEntries") || "[]");
+  viewAllLink.addEventListener("click", async () => {
+      const db = await dbPromise;
+      const entries = await db.getAll("entries");
 
     if (entries.length === 0) {
       allEntriesList.innerHTML = "<li>You haven't written any entries yet.</li>";
@@ -107,12 +157,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   newPromptBtn.addEventListener("click", setNewPrompt);
 
-  // Save journal entry to localStorage
-  function saveEntry(entry) {
-    const entries = JSON.parse(localStorage.getItem("journalEntries") || "[]");
-    entries.push(entry);
-    localStorage.setItem("journalEntries", JSON.stringify(entries));
-  }
 
   // Truncate long responses for summaries
   function truncate(text, length) {
@@ -120,8 +164,10 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Display most relevant (or recent) entries
-  function displayRelevantEntries(newEntry = null) {
-    const entries = JSON.parse(localStorage.getItem("journalEntries") || "[]");
+  async function displayRelevantEntries(newEntry = null) {
+    const db = await dbPromise;
+    const entries = await db.getAll('entries');
+
     entryList.innerHTML = "";
 
     if (entries.length === 0) {
@@ -214,7 +260,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ...aiData
       };
 
-      saveEntry(entry);
+      await saveEntry(entry);
       console.log("Saved entry:", entry);
 
       entryInput.value = "";
@@ -224,7 +270,7 @@ document.addEventListener("DOMContentLoaded", () => {
       setPrompt("After reviewing these entries, do you have anything to add?");
 
       // Show relevant entries
-      displayRelevantEntries(entry);
+      await displayRelevantEntries(entry);
     } catch (err) {
       console.error("❌ Error during submission:", err);
       alert("Something went wrong while processing your entry.");
