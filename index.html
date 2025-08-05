@@ -77,7 +77,18 @@
   <div id="allEntriesModal" class="modalOverlay hidden">
     <div class="modalBox">
       <button class="close-button" id="closeAllEntries">&times;</button>
-      <h2>All Past Entries</h2>
+      <h2>Past Entries</h2>
+      <div id="entrySearchSection">
+         <input type="text" id="entrySearchInput" placeholder="Search..." />
+
+        <div id="entrySearchMode">
+          <label><input type="radio" name="entrySearchMode" value="text"> Text Search</label>
+          <label><input type="radio" name="entrySearchMode" value="semantic"> Semantic Search</label>
+         
+        </div>
+           <button id="entrySearchButton">Search</button>
+      </div>
+
       <ul id="allEntriesList"></ul>
     </div>
   </div>
@@ -118,7 +129,7 @@
       <h3>Do you have anything to add?</h3>
       <textarea id="followUpEntry" maxlength="2000" placeholder="Add more thoughts..."></textarea>
       <div id="followUpCharCount">2000 characters remaining</div>
-      <button id="submitFollowUpEntry">Submit Follow-Up</button>
+      <button id="submitFollowUpEntry" class="secondary-button">Submit Follow-Up</button>
     </div>
   </div>
 </div>

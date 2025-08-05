@@ -58,6 +58,41 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const relevanceFilterOptions = document.getElementsByName("relevanceFilter");
 
+  const entrySearchInput = document.getElementById("entrySearchInput");
+  const entrySearchModeOptions = document.getElementsByName("entrySearchMode");
+  const entrySearchButton = document.getElementById("entrySearchButton");
+  
+
+  entrySearchButton.addEventListener("click", async () => {
+    const query = entrySearchInput.value.trim();
+    if (!query) return;
+
+    const allEntries = await getAllEntries();
+    const selectedMode = [...entrySearchModeOptions].find(r => r.checked)?.value || "text";
+
+
+    await setSetting("entrySearchMode", selectedMode); // remember last used
+
+    let results = [];
+
+    if (selectedMode === "text") {
+      results = allEntries.filter(entry =>
+        (entry.prompt + " " + entry.response).toLowerCase().includes(query.toLowerCase())
+      );
+    } else if (selectedMode === "semantic") {
+      const newEmbedding = await processEntry(query);
+      results = allEntries
+        .filter(e => Array.isArray(e.embedding))
+        .map(entry => ({
+          ...entry,
+          relevance: scoreRelevance(newEmbedding, entry)
+        }))
+        .sort((a, b) => b.relevance - a.relevance)
+        .slice(0, 10);
+    }
+
+    showAllEntriesResults(results);
+  });
 
 
 
@@ -100,16 +135,27 @@ document.addEventListener("DOMContentLoaded", async () => {
     promptEl.textContent = text;
   }
 
-  async function setNewPrompt() {
-    const prompt = await getRandomPrompt();
+  async function setNewPrompt(fallback = "What's on your mind?") {
+    const prompt = await getRandomPrompt() || fallback;
     setPrompt(prompt);
   }
+
 
   const db = await dbPromise;
   const hasSeenWelcome = await db.get('settings', 'hasSeenWelcome');
   if (!hasSeenWelcome) {
     welcomeModal.classList.remove("hidden");
   }
+
+  const savedSearchMode = await getSetting("entrySearchMode") || "text";
+    for (const option of entrySearchModeOptions) {
+      if (option.value === savedSearchMode) option.checked = true;
+
+      option.addEventListener("change", async () => {
+        await setSetting("entrySearchMode", option.value);
+      });
+  }
+
 
   const savedFilter = await getSetting("relevanceFilter") || "recent";
   for (const option of relevanceFilterOptions) {
@@ -209,7 +255,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const allEntries = await getAllEntries();
       const lastEntry = allEntries.find(e => e.id === lastEntryId);
 
-      const aiData = await processEntry(`${currentPrompt}\n\n${text}`);
+      const aiData = await processEntry(text);
 
 
       const newEntry = {
@@ -279,11 +325,14 @@ async function displayRecentEntries(newEntry = null) {
       day: "numeric"
     });
 
-    const summary = entry.summary || truncate(entry.response, 80);
-
     const text = document.createElement("div");
     text.className = "entry-summary";
-    text.textContent = `${date} — ${summary}`;
+    text.innerHTML = `
+      <strong>${date}</strong><br>
+      <em>${entry.prompt}</em><br>
+      ${truncate(entry.response, 200)}
+    `;
+
 
     const buttonWrapper = document.createElement("div");
     buttonWrapper.className = "button-wrapper";
@@ -308,6 +357,9 @@ async function displayRecentEntries(newEntry = null) {
 
   // Handle journal submission
   submitBtn.addEventListener("click", async () => {
+    console.log("currentPrompt before submit:", currentPrompt);
+    console.log("promptEl.textContent:", promptEl.textContent);
+
     const text = entryInput.value.trim();
     if (!text) return;
 
@@ -431,7 +483,33 @@ modal.dataset.lastEntryId = newEntry.id;
 
 
   // Initial setup
+ // At the bottom of DOMContentLoaded
   setPrompt("What's on your mind?");
   await displayRecentEntries();
+
   charCount.textContent = `${maxChars} characters remaining`;
-});
+})
+
+function showAllEntriesResults(entries) {
+  const list = document.getElementById("allEntriesList");
+  list.innerHTML = "";
+
+  if (entries.length === 0) {
+    list.innerHTML = "<li>No entries found.</li>";
+    return;
+  }
+
+  for (const entry of entries) {
+    const li = document.createElement("li");
+    const date = new Date(entry.timestamp).toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric"
+    });
+
+    li.innerHTML = `<strong>${date}</strong><br><em>${entry.prompt}</em><br>${entry.response}<br><br>`;
+    list.appendChild(li);
+  }
+
+  document.getElementById("allEntriesModal").classList.remove("hidden");
+};

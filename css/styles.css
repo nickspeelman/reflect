@@ -182,10 +182,13 @@ ul#entryList li {
   text-align: left;
   padding-left: 1.2em;
   margin-top: 1em;
-  max-height: 60vh;
-  overflow-y: auto;
   white-space: pre-wrap;
+
+  /* Remove scroll behavior */
+  max-height: none;
+  overflow-y: visible;
 }
+
 
 .modal-link {
   display: inline-block;
@@ -331,4 +334,79 @@ ul#entryList li {
 
 .modalBox h2 {
   color: white;
+}
+
+#entrySearchSection {
+  margin-bottom: 1em;
+  font-size: 0.9em;
+}
+
+#entrySearchInput {
+  width: 100%;
+  padding: 8px;
+  margin-top: 4px;
+  margin-bottom: 0.5em;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-size: 1em;
+}
+
+#entrySearchMode {
+  display: flex;
+  gap: 1em;
+  justify-content: center;
+  margin-bottom: 1em;
+}
+
+#entrySearchMode label {
+  white-space: nowrap;
+}
+
+#entrySearchButton {
+  display: block;
+  margin: 0.5em auto 1em;
+  padding: 8px 16px;
+  font-size: 1em;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+#entrySearchButton:hover {
+  background: rgba(0, 0, 0, 0.85);
+}
+
+#entrySearchButton {
+  display: block;
+  margin: 1em auto;
+  padding: 10px 20px;
+  font-size: 1em;
+  font-weight: bold;
+  background: #666666;  /* Medium gray */
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+  transition: background 0.2s ease;
+}
+
+#entrySearchButton:hover {
+  background: #444444;  /* Darker gray on hover */
+}
+
+.secondary-button {
+  background-color: #ddd;
+  color: #333;
+  border: 1px solid #ccc;
+  padding: 0.5em 1em;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.secondary-button:hover {
+  background-color: #ccc;
 }
