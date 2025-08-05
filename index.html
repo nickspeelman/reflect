@@ -102,6 +102,28 @@
     </div>
   </div>
 
+  <!-- 🔎 Modal: Relevant Entries -->
+<div id="relevantEntriesModal" class="modalOverlay hidden">
+  <div class="modalBox">
+    <button class="close-button" id="closeRelevantEntries">&times;</button>
+    <h2>Similar Entries</h2>
+    <div id="relevanceFilterOptions">
+      <label><input type="radio" name="relevanceFilter" value="recent"> Show me more recent relevant entries</label><br>
+      <label><input type="radio" name="relevanceFilter" value="older"> Show me older relevant entries</label><br>
+      <label><input type="radio" name="relevanceFilter" value="most"> Show me the most relevant entries</label>
+    </div>
+
+    <ul id="relevantEntriesList"></ul>
+    <div id="followUpEntrySection">
+      <h3>Do you have anything to add?</h3>
+      <textarea id="followUpEntry" maxlength="2000" placeholder="Add more thoughts..."></textarea>
+      <div id="followUpCharCount">2000 characters remaining</div>
+      <button id="submitFollowUpEntry">Submit Follow-Up</button>
+    </div>
+  </div>
+</div>
+
+
   <!-- ⚙️ Load AI Library & App Logic -->
   <script type="module">
     // Load Transformers.js and make it globally accessible

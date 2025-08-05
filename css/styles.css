@@ -275,3 +275,60 @@ ul#entryList li {
 .refresh-button:hover {
   color: #007acc;
 }
+
+#relevantEntriesList {
+  text-align: left;
+  padding-left: 1.2em;
+  margin-top: 1em;
+  max-height: 60vh;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
+
+#followUpEntrySection {
+  margin-top: 2em;
+}
+
+#followUpEntry {
+  width: 100%;
+  height: 100px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 1em;
+  resize: vertical;
+  background: rgba(255, 255, 255, 0.95);
+}
+
+#followUpCharCount {
+  font-size: 0.85em;
+  text-align: right;
+  margin-top: 4px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+#relevanceFilterOptions {
+  margin: 1em 0;
+  font-size: 0.85em;
+  color: #ccc;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center; /* ✅ Center the row */
+  gap: 1.2em;              /* ✅ Even spacing */
+  text-align: center;
+}
+
+#relevanceFilterOptions label {
+  white-space: nowrap;     /* ✅ Prevent label wrapping */
+  display: flex;
+  align-items: center;
+}
+
+#relevanceFilterOptions input[type="radio"] {
+  margin-right: 0.4em;
+}
+
+
+.modalBox h2 {
+  color: white;
+}
