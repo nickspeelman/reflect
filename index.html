@@ -77,7 +77,7 @@
   <div id="allEntriesModal" class="modalOverlay hidden">
     <div class="modalBox">
       <button class="close-button" id="closeAllEntries">&times;</button>
-      <h2>Past Entries</h2>
+      <h2 id="allEntriesTitle">Past Entries</h2>
       <div id="entrySearchSection">
          <input type="text" id="entrySearchInput" placeholder="Search..." />
 
@@ -86,7 +86,10 @@
           <label><input type="radio" name="entrySearchMode" value="semantic"> Semantic Search</label>
          
         </div>
+         <div class="search-button-row">
            <button id="entrySearchButton">Search</button>
+           <button id="clearSearchButton">Clear Search</button>
+          </div>
       </div>
 
       <ul id="allEntriesList"></ul>

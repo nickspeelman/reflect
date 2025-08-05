@@ -22,7 +22,10 @@ async function setSetting(key, value) {
   await db.put('settings', value, key);
 }
 
-
+// Truncate long responses for summaries
+function truncate(text, length) {
+  return text.length > length ? text.substring(0, length) + "..." : text;
+  }
 
 document.addEventListener("DOMContentLoaded", async () => {
 
@@ -61,6 +64,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   const entrySearchInput = document.getElementById("entrySearchInput");
   const entrySearchModeOptions = document.getElementsByName("entrySearchMode");
   const entrySearchButton = document.getElementById("entrySearchButton");
+  const clearSearchButton = document.getElementById("clearSearchButton");
+
+  clearSearchButton.addEventListener("click", async () => {
+    entrySearchInput.value = ""; // clear input
+    const entries = await getAllEntries();
+    showAllEntriesResults(entries, false); // show full list
+  });
+
   
 
   entrySearchButton.addEventListener("click", async () => {
@@ -91,7 +102,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         .slice(0, 10);
     }
 
-    showAllEntriesResults(results);
+    showAllEntriesResults(results, true);
   });
 
 
@@ -198,31 +209,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   // Handle view all entries modal
-  viewAllLink.addEventListener("click", async () => {
-      const db = await dbPromise;
-      const entries = await db.getAll("entries");
+viewAllLink.addEventListener("click", async () => {
+  const entries = await getAllEntries();
+  showAllEntriesResults(entries, false);
+});
 
-    if (entries.length === 0) {
-      allEntriesList.innerHTML = "<li>You haven't written any entries yet.</li>";
-    } else {
-      const sorted = entries.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-      allEntriesList.innerHTML = "";
 
-      for (const entry of sorted) {
-        const li = document.createElement("li");
-        const date = new Date(entry.timestamp).toLocaleDateString(undefined, {
-          year: "numeric",
-          month: "short",
-          day: "numeric"
-        });
-
-        li.innerHTML = `<strong>${date}</strong><br><em>${entry.prompt}</em><br>${entry.response}<br><br>`;
-        allEntriesList.appendChild(li);
-      }
-    }
-
-    allEntriesModal.classList.remove("hidden");
-  });
+  
 
   closeAllEntries.addEventListener("click", () => {
     allEntriesModal.classList.add("hidden");
@@ -285,10 +278,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   newPromptBtn.addEventListener("click", setNewPrompt);
 
 
-  // Truncate long responses for summaries
-  function truncate(text, length) {
-    return text.length > length ? text.substring(0, length) + "..." : text;
-  }
+
 
   // Display most relevant (or recent) entries
 async function displayRecentEntries(newEntry = null) {
@@ -466,9 +456,25 @@ function showRelevantEntriesModal(newEntry, allEntries) {
         day: "numeric"
       });
 
-      li.innerHTML = `<strong>${date}</strong><br><em>${entry.prompt}</em><br>${truncate(entry.response, 80)}<br><br>`;
-      list.appendChild(li);
-    }
+  li.innerHTML = `
+    <strong>${date}</strong>
+    <em>${entry.prompt}</em>
+    ${truncate(entry.response, 200)}
+  `;
+
+  const readMore = document.createElement("button");
+  readMore.textContent = "Read more";
+  readMore.className = "secondary-button";
+  readMore.addEventListener("click", () => {
+    document.getElementById("modalPrompt").textContent = entry.prompt;
+    document.getElementById("modalResponse").textContent = entry.response;
+    document.getElementById("entryModal").classList.remove("hidden");
+  });
+
+  li.appendChild(readMore);
+  list.appendChild(li);
+
+      }
   }
 
 modal.classList.remove("hidden");
@@ -490,9 +496,14 @@ modal.dataset.lastEntryId = newEntry.id;
   charCount.textContent = `${maxChars} characters remaining`;
 })
 
-function showAllEntriesResults(entries) {
+function showAllEntriesResults(entries, isSearch = false) {
   const list = document.getElementById("allEntriesList");
+   const title = document.getElementById("allEntriesTitle");
+
+  // 👇 Set the title based on context
+  title.textContent = isSearch ? "Search Results" : "Past Entries";
   list.innerHTML = "";
+  
 
   if (entries.length === 0) {
     list.innerHTML = "<li>No entries found.</li>";
@@ -507,8 +518,24 @@ function showAllEntriesResults(entries) {
       day: "numeric"
     });
 
-    li.innerHTML = `<strong>${date}</strong><br><em>${entry.prompt}</em><br>${entry.response}<br><br>`;
+    li.innerHTML = `
+      <strong>${date}</strong>
+      <em>${entry.prompt}</em>
+      ${truncate(entry.response, 200)}
+    `;
+
+    const readMore = document.createElement("button");
+    readMore.textContent = "Read more";
+    readMore.className = "secondary-button";
+    readMore.addEventListener("click", () => {
+      document.getElementById("modalPrompt").textContent = entry.prompt;
+      document.getElementById("modalResponse").textContent = entry.response;
+      document.getElementById("entryModal").classList.remove("hidden");
+    });
+
+    li.appendChild(readMore);
     list.appendChild(li);
+
   }
 
   document.getElementById("allEntriesModal").classList.remove("hidden");

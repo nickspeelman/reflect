@@ -127,7 +127,7 @@ ul#entryList li {
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 9999;
+  z-index: 1000;
   overflow-y: auto;
   backdrop-filter: blur(2px);
 }
@@ -283,10 +283,11 @@ ul#entryList li {
   text-align: left;
   padding-left: 1.2em;
   margin-top: 1em;
-  max-height: 60vh;
-  overflow-y: auto;
   white-space: pre-wrap;
+  max-height: none;
+  overflow: visible;
 }
+
 
 #followUpEntrySection {
   margin-top: 2em;
@@ -378,7 +379,8 @@ ul#entryList li {
   background: rgba(0, 0, 0, 0.85);
 }
 
-#entrySearchButton {
+#entrySearchButton,
+#clearSearchButton {
   display: block;
   margin: 1em auto;
   padding: 10px 20px;
@@ -409,4 +411,68 @@ ul#entryList li {
 
 .secondary-button:hover {
   background-color: #ccc;
+}
+
+#entryModal {
+  z-index: 2000; /* Make sure it's higher than any other modal */
+}
+
+#entryModal .modalBox {
+  background-color: #fff;       /* white background */
+  color: #111;                  /* dark text */
+  border: 1px solid #ccc;
+}
+
+#entryModal .modal-prompt {
+  color: #555;                  /* slightly lighter for prompt */
+  font-style: italic;
+  margin-bottom: 1em;
+}
+
+#entryModal .modal-response {
+  color: #111;                  /* main entry text */
+  white-space: pre-wrap;
+}
+
+#allEntriesList,
+#relevantEntriesList,
+#entryList {
+  list-style-type: none;
+  padding-left: 0; /* Optional: aligns content flush with edge */
+  margin: 0;
+}
+
+.search-button-row {
+  display: flex;
+  gap: 0.5em;
+  margin-top: 0.5em;
+}
+
+.search-button-row {
+  display: flex;
+  gap: 0.5em;
+  margin-top: 0.5em;
+}
+
+.search-button-row button {
+  flex: 1 1 0;
+  min-width: 0; /* prevents overflow */
+}
+
+#relevantEntriesModal {
+  overflow: hidden; /* Prevent overlay from scrolling */
+}
+
+#relevantEntriesModal .modalBox {
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+#relevantEntriesModal {
+  overflow: hidden; /* Prevent modal overlay scroll */
+}
+
+#relevantEntriesModal .modalBox {
+  max-height: 80vh;  /* Let modalBox scroll instead */
+  overflow-y: auto;
 }
