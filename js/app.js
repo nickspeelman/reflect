@@ -27,6 +27,69 @@ function truncate(text, length) {
   return text.length > length ? text.substring(0, length) + "..." : text;
   }
 
+async function openEntryModal(entry) {
+  console.log("📖 Opening entry:", entry);
+  const modalPrompt = document.getElementById("modalPrompt");
+  const modalResponse = document.getElementById("modalResponse");
+  const relatedContainer = document.getElementById("relatedEntries");
+
+  modalPrompt.textContent = entry.prompt;
+  modalResponse.textContent = entry.response;
+
+  const modalDate = document.getElementById("modalDate");
+  const date = new Date(entry.timestamp).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric"
+  });
+  modalDate.textContent = date;
+
+  // Clear old related entries
+  relatedContainer.innerHTML = "";
+  relatedContainer.classList.add("hidden");
+
+
+  if (Array.isArray(entry.relatedEntryIds) && entry.relatedEntryIds.length > 0) {
+    const db = await dbPromise;
+    const relatedEntries = await Promise.all(
+      entry.relatedEntryIds.map(id => db.get('entries', id))
+    );
+
+    const validEntries = relatedEntries.filter(e => e); // skip nulls
+
+    if (validEntries.length > 0) {
+      relatedContainer.classList.remove("hidden"); // ✅ Show only when needed
+
+      const heading = document.createElement("div");
+      heading.innerHTML = "<h3>Related Entries</h3>";
+      relatedContainer.appendChild(heading);
+
+      for (const rel of validEntries) {
+        const preview = document.createElement("div");
+        preview.className = "related-entry-preview";
+
+        const date = new Date(rel.timestamp).toLocaleDateString(undefined, {
+          year: "numeric",
+          month: "short",
+          day: "numeric"
+        });
+
+        preview.innerHTML = `
+          <em>${date}<em>
+          <i>${rel.prompt}<i>
+          ${truncate(rel.response, 150)}
+        `;
+
+        relatedContainer.appendChild(preview);
+      }
+    }
+}
+
+
+  document.getElementById("entryModal").classList.remove("hidden");
+}
+
+
 document.addEventListener("DOMContentLoaded", async () => {
 
   // DOM Elements
@@ -65,6 +128,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   const entrySearchModeOptions = document.getElementsByName("entrySearchMode");
   const entrySearchButton = document.getElementById("entrySearchButton");
   const clearSearchButton = document.getElementById("clearSearchButton");
+
+  let viewedRelevantEntries = new Set();
+
+
 
   clearSearchButton.addEventListener("click", async () => {
     entrySearchInput.value = ""; // clear input
@@ -256,10 +323,14 @@ viewAllLink.addEventListener("click", async () => {
         timestamp: new Date().toLocaleString('sv-SE'),
         prompt: "Do you have anything to add?",
         response: text,
+        relatedEntryIds: [...viewedRelevantEntries],
         ...aiData
       };
 
       await saveEntry(newEntry);
+      console.log("📎 Related entry IDs saved:", [...viewedRelevantEntries]);
+      viewedRelevantEntries.clear();  // reset for the next follow-up session
+
       await displayRecentEntries(newEntry);
 
       const updatedEntries = await getAllEntries();
@@ -330,11 +401,11 @@ async function displayRecentEntries(newEntry = null) {
     const expand = document.createElement("button");
     expand.textContent = "Read more";
     expand.className = "button-link";
-    expand.addEventListener("click", () => {
-      document.getElementById("modalPrompt").textContent = entry.prompt;
-      document.getElementById("modalResponse").textContent = entry.response;
-      modal.classList.remove("hidden");
+    expand.addEventListener("click", async () => {
+      const fullEntry = await dbPromise.then(db => db.get('entries', entry.id));
+      openEntryModal(fullEntry);
     });
+
 
     buttonWrapper.appendChild(expand);
     wrapper.appendChild(text);
@@ -449,6 +520,10 @@ function showRelevantEntriesModal(newEntry, allEntries) {
     list.innerHTML = "<li>No similar entries found.</li>";
   } else {
     for (const entry of relevantEntries) {
+      for (const entry of relevantEntries) {
+        viewedRelevantEntries.add(entry.id);
+      }
+
       const li = document.createElement("li");
       const date = new Date(entry.timestamp).toLocaleDateString(undefined, {
         year: "numeric",
@@ -465,11 +540,8 @@ function showRelevantEntriesModal(newEntry, allEntries) {
   const readMore = document.createElement("button");
   readMore.textContent = "Read more";
   readMore.className = "secondary-button";
-  readMore.addEventListener("click", () => {
-    document.getElementById("modalPrompt").textContent = entry.prompt;
-    document.getElementById("modalResponse").textContent = entry.response;
-    document.getElementById("entryModal").classList.remove("hidden");
-  });
+  readMore.addEventListener("click", () => openEntryModal(entry));
+
 
   li.appendChild(readMore);
   list.appendChild(li);
@@ -485,6 +557,9 @@ followUpCharCount.textContent = `${maxChars} characters remaining`;
 modal.dataset.lastEntryId = newEntry.id;
 
 }
+
+
+
 
 
 
@@ -527,11 +602,8 @@ function showAllEntriesResults(entries, isSearch = false) {
     const readMore = document.createElement("button");
     readMore.textContent = "Read more";
     readMore.className = "secondary-button";
-    readMore.addEventListener("click", () => {
-      document.getElementById("modalPrompt").textContent = entry.prompt;
-      document.getElementById("modalResponse").textContent = entry.response;
-      document.getElementById("entryModal").classList.remove("hidden");
-    });
+    readMore.addEventListener("click", () => openEntryModal(entry));
+
 
     li.appendChild(readMore);
     list.appendChild(li);

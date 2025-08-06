@@ -133,17 +133,18 @@ ul#entryList li {
 }
 
 .modalBox {
-  background: rgba(0, 0, 0, 0.9); /* Semi-transparent black */
-  color: white;                  /* White text */
-  padding: 2rem;
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 1rem;
   border-radius: 8px;
   max-width: 600px;
   max-height: 80vh;
   overflow-y: auto;
   box-shadow: 0 4px 20px rgba(255, 255, 255, 0.1);
   font-size: 1rem;
-  line-height: 1.6;
+  line-height: 1.4;
 }
+
 .modalOverlay.hidden {
   display: none;
 }
@@ -152,6 +153,12 @@ ul#entryList li {
 #modalContent {
   white-space: pre-wrap;
 }
+
+#modalContent > div {
+  margin: 0;
+  padding: 0;
+}
+
 
 .close-button {
   position: absolute;
@@ -475,4 +482,76 @@ ul#entryList li {
 #relevantEntriesModal .modalBox {
   max-height: 80vh;  /* Let modalBox scroll instead */
   overflow-y: auto;
+}
+
+.related-entries {
+  margin-top: 2em;
+  border-top: 1px solid #ccc;
+  padding-top: 1em;
+  font-size: 0.9em;
+  color: #555;
+}
+
+.related-entry-preview {
+  margin-bottom: 0.75em;
+}
+.related-entry-preview strong {
+  color: #333;
+}
+
+.related-entries.hidden {
+  display: none;
+}
+
+.modal-date {
+  font-weight: bold;
+  font-size: 1em;
+  margin: 0;
+  color: #333;
+}
+
+.modal-prompt {
+  font-style: italic;
+  color: #555;
+  margin: 0.25em 0 0 0;  /* just a little space after date */
+}
+
+.modal-response {
+  font-style: normal;
+  color: #111;
+  white-space: pre-wrap;
+  line-height: 1.5;
+  margin: 0.5em 0 0 0;  /* slight gap after prompt */
+}
+
+#modalDate {
+  font-weight: bold;
+  font-size: 0.95em;
+  color: #333;
+  margin: 0;
+  padding: 0;
+}
+
+#modalPrompt {
+  font-style: italic;
+  color: #555;
+  margin: 0.25em 0 0 0;
+  padding: 0;
+}
+
+#modalResponse {
+  color: #111;
+  font-style: normal;
+  white-space: pre-wrap;
+  line-height: 1.4;
+  margin: 0.5em 0 0 0;
+  padding: 0;
+}
+
+.related-entries {
+  margin-top: 1em;
+  padding-top: 0.75em;
+  border-top: 1px solid #ccc;
+  font-size: 0.9em;
+  color: #555;
 }
