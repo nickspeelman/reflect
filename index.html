@@ -18,9 +18,14 @@
 
 <body>
   <div class="container">
+    <!-- Modal portal lives outside .container -->
+<div id="modal-root" class="app-scope"></div>
+
     <!-- 🧠 App Title -->
                <div>
-        <a id="reopenWelcome" class="modal-link">Help / Welcome</a>
+        <a id="reopenWelcome" class="modal-link">Help / Welcome</a><br>
+        <!-- Add a top link/button to open the modal -->
+    <a href="#" id="openBackupModalLink" class="toplink">Backup / Restore</a>
     <h1>Reflect</h1>
 
 
@@ -55,11 +60,29 @@
       </div>
   </div>
 
+<template id="entryModalTemplate">
+  <div class="modalOverlay hidden">
+    <div class="modalBox entry-modal-box">
+      <button class="close-button">&times;</button>
+      <div id="modalContent" class="modalContent">
+        <div id="modalDate" class="modal-date"></div>
+        <div id="modalPrompt" class="modal-prompt"></div>
+        <div id="modalResponse" class="modal-response"></div>
+        <div id="relatedEntries" class="related-entries"></div>
+      </div>
+    </div>
+  </div>
+</template>
+
+
+
+
+
   <!-- 🔍 Modal: View a Specific Entry -->
   <div id="entryModal" class="modalOverlay hidden">
-    <div class="modalBox">
+    <div class="modalBox entry-modal-box">
       <button class="close-button" id="closeModal">&times;</button>
-      <div id="modalContent">
+      <div id="modalContent"  class="modalContent">
         <div id="modalDate" class="modal-date"></div>
         <div id="modalPrompt" class="modal-prompt"></div>
         <div id="modalResponse" class="modal-response"></div>
@@ -138,6 +161,53 @@
     </div>
   </div>
 </div>
+</div>
+
+
+
+<!-- …later in the file (near other modals) -->
+<div id="backupModal" class="modalOverlay hidden" aria-hidden="true">
+  <div class="modalBox">
+    <button id="closeBackupModalBtn" class="close-button" aria-label="Close">×</button>
+    <h2>Backup &amp; Restore</h2>
+
+    <!-- We’ll add the longer safety copy + restore UI in later steps -->
+    <p class="muted">Create a local backup of your journal data as a JSON file.</p>
+
+    <p class="muted">
+      Backups are saved as files on your device. Clearing your browser data or reinstalling may erase your journal.
+      Saving a backup file ensures you can restore your entries later.
+    </p>
+
+  <div class="modal-actions" style="margin-top: .75rem;">
+      <label for="restoreFileInput" class="secondary-button" role="button" tabindex="0">
+    Restore from backup…
+  </label>
+    <input id="restoreFileInput" type="file" accept="application/json,.json" class="visually-hidden" />
+  </div>
+  
+
+    <div class="modal-actions" style="margin-top: 1rem;">
+      <button id="backupNowBtn" class="primary-button">Backup now</button>
+      <button id="closeBackupModalBtn2" class="secondary-button">Close</button>
+    </div>
+
+    <hr class="divider" />
+
+    <div class="backup-status" style="margin-top:.5rem">
+      <p><strong>Unbacked entries:</strong> <span id="unbackedCount">0</span></p>
+      <p><strong>Last backup:</strong> <span id="lastBackupLabel">Never</span></p>
+    </div>
+
+    <label for="backupThresholdInput" class="label" style="display:block;margin-top:.75rem;">
+      Remind me every N new entries (0 = never):
+    </label>
+    <input id="backupThresholdInput" type="number" min="0" step="1" value="10" style="max-width:10ch;">
+
+  </div>
+</div>
+
+
 
 
   <!-- ⚙️ Load AI Library & App Logic -->

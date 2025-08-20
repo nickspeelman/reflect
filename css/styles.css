@@ -142,7 +142,6 @@ ul#entryList li {
   overflow-y: auto;
   box-shadow: 0 4px 20px rgba(255, 255, 255, 0.1);
   font-size: 1rem;
-  line-height: 1.4;
 }
 
 .modalOverlay.hidden {
@@ -150,14 +149,7 @@ ul#entryList li {
 }
 
 
-#modalContent {
-  white-space: pre-wrap;
-}
 
-#modalContent > div {
-  margin: 0;
-  padding: 0;
-}
 
 
 .close-button {
@@ -189,7 +181,6 @@ ul#entryList li {
   text-align: left;
   padding-left: 1.2em;
   margin-top: 1em;
-  white-space: pre-wrap;
 
   /* Remove scroll behavior */
   max-height: none;
@@ -290,7 +281,6 @@ ul#entryList li {
   text-align: left;
   padding-left: 1.2em;
   margin-top: 1em;
-  white-space: pre-wrap;
   max-height: none;
   overflow: visible;
 }
@@ -479,18 +469,6 @@ ul#entryList li {
   overflow: hidden; /* Prevent modal overlay scroll */
 }
 
-#relevantEntriesModal .modalBox {
-  max-height: 80vh;  /* Let modalBox scroll instead */
-  overflow-y: auto;
-}
-
-.related-entries {
-  margin-top: 2em;
-  border-top: 1px solid #ccc;
-  padding-top: 1em;
-  font-size: 0.9em;
-  color: #555;
-}
 
 .related-entry-preview {
   margin-bottom: 0.75em;
@@ -524,30 +502,6 @@ ul#entryList li {
   margin: 0.5em 0 0 0;  /* slight gap after prompt */
 }
 
-#modalDate {
-  font-weight: bold;
-  font-size: 0.95em;
-  color: #333;
-  margin: 0;
-  padding: 0;
-}
-
-#modalPrompt {
-  font-style: italic;
-  color: #555;
-  margin: 0.25em 0 0 0;
-  padding: 0;
-}
-
-#modalResponse {
-  color: #111;
-  font-style: normal;
-  white-space: pre-wrap;
-  line-height: 1.4;
-  margin: 0.5em 0 0 0;
-  padding: 0;
-}
-
 .related-entries {
   margin-top: 1em;
   padding-top: 0.75em;
@@ -555,3 +509,217 @@ ul#entryList li {
   font-size: 0.9em;
   color: #555;
 }
+
+.modalOverlay {
+  align-items: flex-start;
+  padding-top: 2vh;
+  padding-bottom: 2vh;
+}
+
+
+.modalBox {
+  width: 100%;
+  max-width: 600px;
+}
+
+
+
+.modalOverlay .entry-modal-box {
+  background-color: #fff;
+  color: #111;
+  border: 1px solid #ccc;
+}
+
+
+.modal-date,
+.modal-prompt,
+.modal-response {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.hidden {
+  display: none !important;
+}
+
+
+.modalBox.entry-modal-box {
+  background-color: #fff;
+  color: #111;
+  border: 1px solid #ccc;
+}
+
+.modalBox .related-entries {
+  margin-top: 1em;
+  padding-top: 0.75em;
+  border-top: 1px solid #ccc;
+  font-size: 0.9em;
+  color: #555;
+}
+
+.related-entry-preview {
+  margin-bottom: 0.75em;
+}
+
+
+
+/* Collapse newlines to spaces only in the ORIGINAL entry modal */
+#entryModal .modal-response { white-space: normal; }
+
+
+
+
+.visually-hidden {
+  position: absolute !important;
+  height: 1px; width: 1px;
+  overflow: hidden; clip: rect(1px, 1px, 1px, 1px);
+  white-space: nowrap; border: 0; padding: 0; margin: -1px;
+}
+
+/* inline link look */
+.relevant-entry-preview .read-more-link {
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.9em;
+}
+
+/* nice keyboard focus */
+.relevant-entry-preview .read-more-link:focus {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* Inline "… read more" link styling */
+.relevant-entry-preview a.read-more-link,
+#modal-root .relevant-entry-preview a.read-more-link {
+  color: #6b7280;            /* gray-500-ish */
+  text-decoration: underline;
+}
+
+.relevant-entry-preview a.read-more-link:hover,
+.relevant-entry-preview a.read-more-link:focus,
+#modal-root .relevant-entry-preview a.read-more-link:hover,
+#modal-root .relevant-entry-preview a.read-more-link:focus {
+  color: #374151;            /* darker on hover/focus for contrast */
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.relevant-entry-preview a.read-more-link:visited,
+#modal-root .relevant-entry-preview a.read-more-link:visited {
+  color: #6b7280;            /* keep visited state gray, not purple */
+}
+
+/* Inline "… read more" link: gray, no underline */
+.relevant-entry-preview a.read-more-link,
+#modal-root .relevant-entry-preview a.read-more-link {
+  color: #6b7280;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* Hover/focus: darker gray, still no underline; keep focus ring for a11y */
+.relevant-entry-preview a.read-more-link:hover,
+.relevant-entry-preview a.read-more-link:focus,
+#modal-root .relevant-entry-preview a.read-more-link:hover,
+#modal-root .relevant-entry-preview a.read-more-link:focus {
+  color: #374151;
+  text-decoration: none;
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* Visited stays gray, not purple */
+.relevant-entry-preview a.read-more-link:visited,
+#modal-root .relevant-entry-preview a.read-more-link:visited {
+  color: #6b7280;
+  text-decoration: none;
+}
+
+/* Gray, no-underline "… read more" links in ALL related-entry contexts */
+.related-entries a.read-more-link,
+.relevant-entry-preview a.read-more-link,
+#modal-root .related-entries a.read-more-link,
+#modal-root .relevant-entry-preview a.read-more-link {
+  color: #6b7280;         /* gray */
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.related-entries a.read-more-link:hover,
+.related-entries a.read-more-link:focus,
+.relevant-entry-preview a.read-more-link:hover,
+.relevant-entry-preview a.read-more-link:focus,
+#modal-root .related-entries a.read-more-link:hover,
+#modal-root .related-entries a.read-more-link:focus,
+#modal-root .relevant-entry-preview a.read-more-link:hover,
+#modal-root .relevant-entry-preview a.read-more-link:focus {
+  color: #374151;         /* darker on hover/focus */
+  text-decoration: none;
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.related-entries a.read-more-link:visited,
+.relevant-entry-preview a.read-more-link:visited,
+#modal-root .related-entries a.read-more-link:visited,
+#modal-root .relevant-entry-preview a.read-more-link:visited {
+  color: #6b7280;         /* keep visited gray */
+  text-decoration: none;
+}
+
+/* Light gray, no-underline for read-more links in the Past Entries/Search modal */
+#allEntriesList a.read-more-link,
+#allEntriesModal a.read-more-link {
+  color: #9CA3AF;          /* light gray */
+  text-decoration: none;
+  cursor: pointer;
+}
+
+#allEntriesList a.read-more-link:hover,
+#allEntriesList a.read-more-link:focus,
+#allEntriesModal a.read-more-link:hover,
+#allEntriesModal a.read-more-link:focus {
+  color: #6B7280;          /* a bit darker on hover/focus */
+  text-decoration: none;
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+#allEntriesList a.read-more-link:visited,
+#allEntriesModal a.read-more-link:visited {
+  color: #9CA3AF;          /* keep visited state light gray */
+  text-decoration: none;
+}
+
+/* Keep modal layout tidy */
+#relevantEntriesModal .modalBox {
+  box-sizing: border-box;
+}
+
+/* Make the follow-up composer fit the frame exactly */
+#relevantEntriesModal #followUpEntry {
+  box-sizing: border-box;   /* include padding + border in the width */
+  width: 100%;
+  max-width: 100%;
+  display: block;
+  margin: 0;                /* avoid default margins causing overflow */
+  /* optional niceties */
+  resize: vertical;
+}
+
+/* If your submit row sits beside it, ensure it doesn't push width */
+#relevantEntriesModal .follow-up-actions {
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+
+/* Guard against long unbroken text pushing the modal wider */
+#relevantEntriesModal .modal-response,
+#relevantEntriesModal .related-entry-preview {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+

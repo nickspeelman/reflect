@@ -2,10 +2,99 @@ import { processEntry, scoreRelevance } from './ai.js';
 import { getRandomPrompt } from './prompts.js';
 import { dbPromise } from './db.js';
 
+let backupModalReturnFocus = null;
+
+// --- Restore (import) from a JSON backup file ---
+async function restoreBackupFromFile(file) {
+  if (!file) throw new Error('No file selected');
+
+  // Read & parse
+  const text = await file.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error('Selected file is not valid JSON.');
+  }
+
+  // Basic validation
+  if (!data || typeof data !== 'object') throw new Error('Backup payload missing.');
+  if (typeof data.version !== 'number') throw new Error('Backup version missing.');
+  if (!Array.isArray(data.entries)) throw new Error('Backup has no entries array.');
+  if (!data.settings || typeof data.settings !== 'object') throw new Error('Backup has no settings object.');
+
+  // Confirm destructive action
+  const ok = window.confirm(
+    'Restoring will REPLACE all current entries and settings with the data in this file. Continue?'
+  );
+  if (!ok) return;
+
+  const db = await dbPromise;
+
+  // Single readwrite transaction across both stores
+  const tx = db.transaction(['entries', 'settings'], 'readwrite');
+  const entriesStore = tx.objectStore('entries');
+  const settingsStore = tx.objectStore('settings');
+
+  // Clear current data
+  await entriesStore.clear();
+  await settingsStore.clear();
+
+  // Write entries
+  for (const e of data.entries) {
+    await entriesStore.put(e);
+  }
+
+  // Write settings (merge is fine; we're replacing anyway)
+  for (const [k, v] of Object.entries(data.settings)) {
+    await settingsStore.put(v, k);
+  }
+
+  // Ensure backup counters reflect the imported state
+  const importedCount = data.entries.length;
+  const importedWhen = typeof data.exportedAt === 'string' ? data.exportedAt : new Date().toISOString();
+  await settingsStore.put(importedCount, 'lastBackupEntryCount');
+  await settingsStore.put(importedWhen, 'lastBackupAt');
+
+  await tx.done;
+
+  console.log(`✅ Restore complete (${importedCount} entries).`);
+}
+
+
+
+function mountInPortal(el) {
+  let portal = document.getElementById('modal-root');
+  if (!portal) {
+    portal = document.createElement('div');
+    portal.id = 'modal-root';
+    portal.className = 'app-scope';
+    document.body.appendChild(portal);
+  }
+  portal.appendChild(el);
+}
+
+function makeSnippet(text, max = 150) {
+  const s = String(text || '');
+  if (s.length <= max) return { snippet: s, truncated: false };
+  // break on word boundary if possible
+  let cut = s.slice(0, max);
+  const lastSpace = cut.lastIndexOf(' ');
+  if (lastSpace > max * 0.6) cut = cut.slice(0, lastSpace);
+  return { snippet: cut, truncated: true };
+}
+
+
+
+
+
 async function saveEntry(entry) {
   const db = await dbPromise;
   await db.put('entries', entry);
+  await checkBackupReminder();
 }
+
+
 
 async function getAllEntries() {
   const db = await dbPromise;
@@ -28,66 +117,372 @@ function truncate(text, length) {
   }
 
 async function openEntryModal(entry) {
-  console.log("📖 Opening entry:", entry);
-  const modalPrompt = document.getElementById("modalPrompt");
-  const modalResponse = document.getElementById("modalResponse");
-  const relatedContainer = document.getElementById("relatedEntries");
+  const modal = document.getElementById("entryModal");
+  await populateEntryModal(entry, modal);
+  modal.classList.remove("hidden");
 
-  modalPrompt.textContent = entry.prompt;
-  modalResponse.textContent = entry.response;
 
-  const modalDate = document.getElementById("modalDate");
-  const date = new Date(entry.timestamp).toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric"
+
+}
+
+
+
+function attachEntryListeners() {
+  document.querySelectorAll(".read-entry").forEach(button => {
+    if (!button.dataset.listenerAttached) {
+      button.addEventListener("click", async () => {
+        const entryId = button.dataset.entryId;
+        const db = await dbPromise;
+        const entry = await db.get("entries", entryId);
+        openEntryModal(entry);
+      });
+      button.dataset.listenerAttached = "true";
+    }
   });
-  modalDate.textContent = date;
+}
 
-  // Clear old related entries
+
+
+
+let modalCount = 0;
+
+async function openStackedEntryModal(entry) {
+  console.log("Now you are here.")
+  modalCount++;
+
+  // ✅ Use the template content, not the tag itself
+  const template = document.getElementById("entryModalTemplate");
+  if (!template?.content?.firstElementChild) {
+    console.error("❌ entryModalTemplate is missing or malformed.");
+    return;
+  }
+
+  // ✅ Clone the modal DOM from the template
+  const clone = template.content.firstElementChild.cloneNode(true);
+  console.log(clone)
+
+  // ✅ Remove IDs from the clone to prevent duplicates
+  clone.querySelectorAll("[id]").forEach(el => el.removeAttribute("id"));
+  clone.querySelector(".modalBox").classList.add("entry-modal-box");
+
+  console.log(clone)
+
+  // ✅ Prepare modal styles
+  clone.classList.remove("hidden");
+  clone.style.zIndex = 2000 + modalCount;
+
+  // ✅ Handle close button
+  const closeButton = clone.querySelector(".close-button");
+  if (closeButton) {
+    closeButton.addEventListener("click", () => clone.remove());
+  }
+
+  // ✅ Append to DOM before populating (important!)
+  document.body.appendChild(clone);
+  console.log("Child appended")
+
+  // ✅ Wait for browser to register it in DOM
+  await new Promise(requestAnimationFrame);
+
+  // ✅ Now populate the modal with entry content
+  console.log(entry, clone)
+  console.log("right here bud")
+  await populateEntryModal(entry, clone);
+}
+
+async function checkBackupReminder() {
+  const [threshold, lastCount] = await Promise.all([
+    getSetting('backupPromptThreshold'),
+    getSetting('lastBackupEntryCount')
+  ]);
+
+  // Disabled?
+  if (!threshold || threshold <= 0) return;
+
+  const total = await countEntries();
+  const unbacked = total - (lastCount || 0);
+  if (unbacked >= threshold) {
+    // Avoid re-opening if already visible
+    const overlay = document.getElementById('backupModal');
+    const isOpen = overlay && !overlay.classList.contains('hidden');
+    if (!isOpen) openBackupModal();
+  }
+}
+
+
+async function openBackupModal() {
+  const modal = document.getElementById('backupModal');
+  if (!modal) return;
+
+  // remember the element that opened the modal
+  backupModalReturnFocus = document.activeElement instanceof HTMLElement
+    ? document.activeElement
+    : null;
+
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden', 'false');
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+
+  // focus the primary control inside the modal
+  await refreshBackupModalUI();
+  modal.querySelector('#backupNowBtn')?.focus();
+}
+
+function closeBackupModal() {
+  const modal = document.getElementById('backupModal');
+  if (!modal) return;
+
+  // move focus OUT of the modal BEFORE hiding it
+  const fallback = document.getElementById('openBackupModalLink');
+  const target =
+    (backupModalReturnFocus && document.contains(backupModalReturnFocus)) ? backupModalReturnFocus :
+    (fallback || null);
+
+  if (target instanceof HTMLElement) {
+    target.focus();
+  } else {
+    // last-resort safe focus target
+    document.body.setAttribute('tabindex', '-1');
+    document.body.focus();
+    document.body.removeAttribute('tabindex');
+  }
+
+  // now it's safe to hide the modal
+  modal.classList.add('hidden');
+  modal.setAttribute('aria-hidden', 'true');
+
+  // clear for next time
+  backupModalReturnFocus = null;
+}
+
+
+function wireBackupModal() {
+  const openLink = document.getElementById('openBackupModalLink');
+  const closeBtn1 = document.getElementById('closeBackupModalBtn');
+  const closeBtn2 = document.getElementById('closeBackupModalBtn2');
+  const overlay = document.getElementById('backupModal');
+  const backupNowBtn = document.getElementById('backupNowBtn');
+
+  if (openLink) openLink.addEventListener('click', (e) => { e.preventDefault(); openBackupModal(); });
+  if (closeBtn1) closeBtn1.addEventListener('click', closeBackupModal);
+  if (closeBtn2) closeBtn2.addEventListener('click', closeBackupModal);
+
+  // Click-outside to close
+  if (overlay) {
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) closeBackupModal();
+    });
+  }
+
+  // Wire “Backup now”
+  if (backupNowBtn) {
+    backupNowBtn.addEventListener('click', async () => {
+      try {
+        await exportBackup();  // from Step 2
+        // optional: close after success
+        closeBackupModal();
+      } catch (err) {
+        console.error('Backup failed:', err);
+        // (Optional) show a toast or inline message
+      }
+    });
+  }
+
+    const restoreInput = document.getElementById('restoreFileInput');
+  restoreInput?.addEventListener('change', async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    try {
+      await restoreBackupFromFile(file);  // your restore function
+      closeBackupModal();
+      window.location.reload();           // simplest reliable refresh
+    } catch (err) {
+      console.error('[backup] Restore failed:', err);
+      alert(err?.message || 'Restore failed.');
+    } finally {
+      e.target.value = '';                // allow selecting the same file again
+    }
+  });
+
+    const thresholdInput = document.getElementById('backupThresholdInput');
+
+  // Save on change (clamp to >= 0)
+  thresholdInput?.addEventListener('change', async (e) => {
+    let n = parseInt(e.target.value, 10);
+    if (isNaN(n) || n < 0) n = 0;
+    e.target.value = n;
+    await setSetting('backupPromptThreshold', n);
+  });
+}
+
+function formatLastBackupLabel(iso) {
+  if (!iso) return 'Never';
+  try {
+    const d = new Date(iso);
+    if (isNaN(d)) return 'Never';
+    return d.toLocaleString();
+  } catch { return 'Never'; }
+}
+
+async function countEntries() {
+  const db = await dbPromise;
+  if (typeof db.count === 'function') {
+    try { return await db.count('entries'); } catch { /* fall through */ }
+  }
+  const all = await db.getAll('entries');
+  return all.length;
+}
+
+// Update the modal UI (counts + current threshold)
+async function refreshBackupModalUI() {
+  const [threshold, lastCount, lastAt, total] = await Promise.all([
+    getSetting('backupPromptThreshold'),
+    getSetting('lastBackupEntryCount'),
+    getSetting('lastBackupAt'),
+    countEntries()
+  ]);
+
+  const unbacked = total - (lastCount || 0);
+
+  const $unbacked = document.getElementById('unbackedCount');
+  const $last = document.getElementById('lastBackupLabel');
+  const $input = document.getElementById('backupThresholdInput');
+
+  if ($unbacked) $unbacked.textContent = String(Math.max(0, unbacked));
+  if ($last) $last.textContent = formatLastBackupLabel(lastAt);
+  if ($input) $input.value = (typeof threshold === 'number' && threshold >= 0) ? threshold : 10;
+}
+
+
+// Call this during your app init / DOMContentLoaded
+document.addEventListener('DOMContentLoaded', async () => {
+  // make sure defaults exist (Step 1)
+  await ensureBackupSettingsDefaults();
+  wireBackupModal();
+  checkBackupReminder();
+});
+
+
+
+async function showEntryModal(entry) {
+  modalCount++;
+
+  const template = document.getElementById("entryModalTemplate");
+  const clone = template.content.firstElementChild.cloneNode(true);
+  const modal = clone;
+
+  // Position and stack
+  modal.style.position = "fixed";
+  modal.style.zIndex = 2000 + modalCount;
+
+  // Close button
+  const closeBtn = modal.querySelector(".close-button");
+  closeBtn.addEventListener("click", () => modal.remove());
+
+  // Append before populating
+  document.body.appendChild(modal);
+
+  // Populate content
+  await populateEntryModal(entry, modal);
+}
+
+async function populateEntryModal(entry, modal) {
+  const modalDate = modal.querySelector(".modal-date");
+  const modalPrompt = modal.querySelector(".modal-prompt");
+  const modalResponse = modal.querySelector(".modal-response");
+  const relatedContainer = modal.querySelector(".related-entries");
+
+  // Header/date/prompt/response
+  modalDate.textContent = new Date(entry.timestamp).toLocaleDateString();
+
+  // Prompt in italics (avoid innerHTML for safety)
+  modalPrompt.textContent = "";
+  const promptItal = document.createElement("i");
+  promptItal.textContent = entry.prompt || "";
+  modalPrompt.appendChild(promptItal);
+
+  // Response as a paragraph (preserves CSS whitespace handling)
+  modalResponse.textContent = "";
+  const p = document.createElement("p");
+  p.textContent = entry.response || "";
+  modalResponse.appendChild(p);
+
+  // Related entries
   relatedContainer.innerHTML = "";
   relatedContainer.classList.add("hidden");
 
-
-  if (Array.isArray(entry.relatedEntryIds) && entry.relatedEntryIds.length > 0) {
+  const ids = Array.isArray(entry.relatedEntryIds) ? entry.relatedEntryIds : [];
+  if (ids.length > 0) {
     const db = await dbPromise;
-    const relatedEntries = await Promise.all(
-      entry.relatedEntryIds.map(id => db.get('entries', id))
-    );
-
-    const validEntries = relatedEntries.filter(e => e); // skip nulls
+    const relatedEntries = await Promise.all(ids.map(id => db.get('entries', id)));
+    const validEntries = relatedEntries.filter(Boolean);
 
     if (validEntries.length > 0) {
-      relatedContainer.classList.remove("hidden"); // ✅ Show only when needed
-
-      const heading = document.createElement("div");
-      heading.innerHTML = "<h3>Related Entries</h3>";
-      relatedContainer.appendChild(heading);
+      relatedContainer.classList.remove("hidden");
 
       for (const rel of validEntries) {
         const preview = document.createElement("div");
         preview.className = "related-entry-preview";
 
-        const date = new Date(rel.timestamp).toLocaleDateString(undefined, {
-          year: "numeric",
-          month: "short",
-          day: "numeric"
+        // Build inline: <b>date</b> <i>prompt</i> snippet … read more
+        const b = document.createElement("b");
+        b.textContent = new Date(rel.timestamp).toLocaleDateString();
+
+        const iEl = document.createElement("i");
+        iEl.textContent = rel.prompt || "";
+
+        const { snippet } = makeSnippet(rel.response || "", 150);
+        const snippetSpan = document.createElement("span");
+        snippetSpan.textContent = ` ${snippet}`;
+
+        const readMore = document.createElement("a");
+        readMore.href = "#";
+        readMore.className = "read-more-link";
+        readMore.textContent = " …read more";
+        readMore.addEventListener("click", (e) => {
+          e.preventDefault();
+          openStackedEntryModal(rel);
         });
 
-        preview.innerHTML = `
-          <em>${date}<em>
-          <i>${rel.prompt}<i>
-          ${truncate(rel.response, 150)}
-        `;
-
+        preview.append(b, " ", iEl, " ", snippetSpan, readMore);
         relatedContainer.appendChild(preview);
       }
     }
+  }
 }
 
 
-  document.getElementById("entryModal").classList.remove("hidden");
+// --- Backup settings: defaults and helpers ---
+const BACKUP_SETTINGS_DEFAULTS = {
+  backupPromptThreshold: 10,   // 0 = never prompt
+  lastBackupEntryCount: 0,
+  lastBackupAt: null           // ISO string or null
+};
+
+async function ensureBackupSettingsDefaults() {
+  for (const [k, v] of Object.entries(BACKUP_SETTINGS_DEFAULTS)) {
+    const existing = await getSetting(k);
+    if (existing === undefined) {
+      await setSetting(k, v);
+    }
+  }
 }
+
+async function getAllSettings() {
+  const db = await dbPromise;                         // :contentReference[oaicite:0]{index=0}
+  const keys = await db.getAllKeys('settings');
+  const out = {};
+  for (const k of keys) out[k] = await db.get('settings', k);
+  return out;
+}
+
+
+
+
+
+
+
 
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -130,6 +525,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   const clearSearchButton = document.getElementById("clearSearchButton");
 
   let viewedRelevantEntries = new Set();
+
+  await ensureBackupSettingsDefaults();
+
 
 
 
@@ -400,11 +798,9 @@ async function displayRecentEntries(newEntry = null) {
 
     const expand = document.createElement("button");
     expand.textContent = "Read more";
-    expand.className = "button-link";
-    expand.addEventListener("click", async () => {
-      const fullEntry = await dbPromise.then(db => db.get('entries', entry.id));
-      openEntryModal(fullEntry);
-    });
+    expand.className = "button-link read-entry";
+    expand.dataset.entryId = entry.id;
+
 
 
     buttonWrapper.appendChild(expand);
@@ -413,6 +809,8 @@ async function displayRecentEntries(newEntry = null) {
     li.appendChild(wrapper);
     entryList.appendChild(li);
   }
+
+  attachEntryListeners();
 }
 
 
@@ -519,34 +917,53 @@ function showRelevantEntriesModal(newEntry, allEntries) {
   if (relevantEntries.length === 0) {
     list.innerHTML = "<li>No similar entries found.</li>";
   } else {
-    for (const entry of relevantEntries) {
       for (const entry of relevantEntries) {
-        viewedRelevantEntries.add(entry.id);
-      }
+      viewedRelevantEntries.add(entry.id);
 
       const li = document.createElement("li");
+      li.classList.add("relevant-entry-preview");
+
       const date = new Date(entry.timestamp).toLocaleDateString(undefined, {
-        year: "numeric",
-        month: "short",
-        day: "numeric"
+        year: "numeric", month: "short", day: "numeric"
       });
 
-  li.innerHTML = `
-    <strong>${date}</strong>
-    <em>${entry.prompt}</em>
-    ${truncate(entry.response, 200)}
-  `;
+      // Build preview content using nodes (safer than innerHTML)
+      const preview = document.createElement("div");
 
-  const readMore = document.createElement("button");
-  readMore.textContent = "Read more";
-  readMore.className = "secondary-button";
-  readMore.addEventListener("click", () => openEntryModal(entry));
+      const strong = document.createElement("strong");
+      strong.textContent = date;
+
+      const em = document.createElement("em");
+      em.textContent = entry.prompt;
+
+      const { snippet } = makeSnippet(entry.response, 150);
+      const snippetSpan = document.createElement("span");
+      snippetSpan.textContent = ` ${snippet}`; // leading space after <em>
+
+      preview.append(strong, " ", em, " ", snippetSpan);
+
+      // always add an inline “… read more” link
+      const readMoreLink = document.createElement("a");
+      readMoreLink.href = "#";
+      readMoreLink.className = "read-more-link";
+      readMoreLink.textContent = " …read more";
+      readMoreLink.setAttribute(
+        "aria-label",
+        `Read full entry from ${date}: ${entry.prompt}`
+      );
+      readMoreLink.addEventListener("click", (e) => {
+        e.preventDefault();
+        openStackedEntryModal(entry);
+      });
+      preview.append(readMoreLink);
 
 
-  li.appendChild(readMore);
-  list.appendChild(li);
+      li.appendChild(preview);
+      list.appendChild(li);
+    }
 
-      }
+
+
   }
 
 modal.classList.remove("hidden");
@@ -555,6 +972,9 @@ followUpCharCount.textContent = `${maxChars} characters remaining`;
 
 // Save the last entry to chain from
 modal.dataset.lastEntryId = newEntry.id;
+
+attachEntryListeners();
+
 
 }
 
@@ -570,45 +990,97 @@ modal.dataset.lastEntryId = newEntry.id;
 
   charCount.textContent = `${maxChars} characters remaining`;
 })
-
 function showAllEntriesResults(entries, isSearch = false) {
   const list = document.getElementById("allEntriesList");
-   const title = document.getElementById("allEntriesTitle");
+  const title = document.getElementById("allEntriesTitle");
 
-  // 👇 Set the title based on context
+  // Title
   title.textContent = isSearch ? "Search Results" : "Past Entries";
   list.innerHTML = "";
-  
 
-  if (entries.length === 0) {
+  // Sort by descending timestamp
+  const sorted = entries
+    .filter(e => e.timestamp)
+    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+  if (sorted.length === 0) {
     list.innerHTML = "<li>No entries found.</li>";
     return;
   }
 
-  for (const entry of entries) {
+  for (const entry of sorted) {
     const li = document.createElement("li");
-    const date = new Date(entry.timestamp).toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric"
+
+    const dateStr = new Date(entry.timestamp).toLocaleDateString(undefined, {
+      year: "numeric", month: "short", day: "numeric"
     });
 
-    li.innerHTML = `
-      <strong>${date}</strong>
-      <em>${entry.prompt}</em>
-      ${truncate(entry.response, 200)}
-    `;
+    // Build inline: <strong>date</strong> <em>prompt</em> snippet … read more
+    const strong = document.createElement("strong");
+    strong.textContent = dateStr;
 
-    const readMore = document.createElement("button");
-    readMore.textContent = "Read more";
-    readMore.className = "secondary-button";
-    readMore.addEventListener("click", () => openEntryModal(entry));
+    const em = document.createElement("em");
+    em.textContent = entry.prompt || "";
 
+    const { snippet } = makeSnippet(entry.response || "", 200);
+    const snippetSpan = document.createElement("span");
+    snippetSpan.textContent = ` ${snippet}`;
 
-    li.appendChild(readMore);
+    const readMore = document.createElement("a");
+    // Use href that won't navigate; attachEntryListeners will handle the click
+    readMore.href = "javascript:void(0)";
+    readMore.className = "read-more-link read-entry";
+    readMore.dataset.entryId = entry.id;
+    readMore.textContent = " …read more";
+
+    // Assemble the line
+    li.append(strong, " ", em, " ", snippetSpan, readMore);
+
     list.appendChild(li);
-
   }
 
   document.getElementById("allEntriesModal").classList.remove("hidden");
-};
+  attachEntryListeners();
+}
+
+
+// --- Export (backup) all data to a JSON file ---
+async function exportBackup() {
+  const db = await dbPromise;
+  const [entries, settings] = await Promise.all([
+    db.getAll('entries'),
+    getAllSettings()
+  ]);
+
+  const now = new Date().toISOString();
+  const payload = {
+    version: 1,
+    exportedAt: now,
+    entries,
+    settings
+  };
+
+  // Download as JSON
+  const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+  const fname = `Reflect-backup-${now.replace(/[-:]/g, '').slice(0, 15)}.json`; // YYYYMMDDTHHMM
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fname;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+
+  // Update counters for reminder logic
+  await setSetting('lastBackupEntryCount', entries.length);
+  await setSetting('lastBackupAt', now);
+
+  console.log(`✅ Backup saved (${entries.length} entries) at ${now}.`);
+}
+
+// Dev trigger so you can test from the console
+window.exportBackup = exportBackup;
+
+
