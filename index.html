@@ -209,26 +209,24 @@
 
 
 
+<script type="module">
+  import * as transformers from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+  window.transformers = transformers;
+  const { env } = transformers;
 
-  <!-- ⚙️ Load AI Library & App Logic -->
-  <script type="module">
-    // Load Transformers.js and make it globally accessible
-    import * as transformers from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.5.0/dist/transformers.min.js';
-    window.transformers = transformers;
-  </script>
-
-  <script type="module" src="js/app.js"></script>
-
-  <script type="module">
-  import { openDB } from 'https://cdn.jsdelivr.net/npm/idb@7/+esm';
-
-  window.dbPromise = openDB('journalDB', 1, {
-    upgrade(db) {
-      db.createObjectStore('entries', { keyPath: 'id' });
-      db.createObjectStore('settings');
-    }
-  });
+  env.allowLocalModels = true;
+  env.localModelPath = '/models';
+  env.useCDN = false;     // force local lookups
+  env.useBrowserCache = true;
 </script>
+
+
+<script type="module" src="js/app.js"></script>
+
+
+
+
+
 
 </body>
 </html>

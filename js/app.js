@@ -1,8 +1,42 @@
-import { processEntry, scoreRelevance } from './ai.js';
+import {
+  processEntry,
+  scoreRelevance,
+  attachSummaryV2,
+  assignThemesForEntry,
+  inferEntrySentimentEnsemble,
+  loadModel
+} from './ai.js';
+
 import { getRandomPrompt } from './prompts.js';
 import { dbPromise } from './db.js';
 
+(() => {
+  const realFetch = window.fetch.bind(window);
+  window.fetch = async (...args) => {
+    const [url, init] = args;
+    console.log('[fetch]', url, init?.method || 'GET');
+    const res = await realFetch(...args);
+    console.log('[fetch-res]', res.status, res.url);
+    return res;
+  };
+})();
+
+
+
 let backupModalReturnFocus = null;
+
+
+// --- Dev console helpers (safe to remove later) ---
+if (typeof window !== 'undefined') {
+  window.debug = window.debug || {};
+  window.debug.getSetting = getSetting;
+  window.debug.setSetting = setSetting;
+  window.debug.db = dbPromise;
+  // if you added ensureThemesIndex earlier:
+  // window.debug.ensureThemesIndex = ensureThemesIndex;
+}
+
+
 
 // --- Restore (import) from a JSON backup file ---
 async function restoreBackupFromFile(file) {
@@ -89,10 +123,40 @@ function makeSnippet(text, max = 150) {
 
 
 async function saveEntry(entry) {
+  // 1) Summaries + facets
+  await attachSummaryV2(entry);
+
+  // 1a) Sentiment (POS/NEG/NEU) — new
+  try {
+    console.log("Attempting sentiment analysis")
+    const sent = await inferEntrySentimentEnsemble(entry.response || "");
+    console.log ("Sent: ", sent)
+    entry.sentiment = sent.label;                 // "positive" | "negative" | "neutral"
+    entry.sentiment_confidence = sent.confidence; // 0..1
+    entry.sentiment_breakdown = sent.breakdown;   // {pos,neg,neutral}
+    if (sent.negative_subtype) entry.negative_subtype = sent.negative_subtype;
+  } catch (e) {
+    console.warn('[sentiment ensemble] skipped:', e);
+  }
+
+  // 2) Load current themes (stored in settings)
+  const currentThemes = (await getSetting('themes_v1')) || [];
+
+  // 3) Assign entry tags and update theme centroids/merges
+  const { entryTags, themes } = await assignThemesForEntry(entry, currentThemes);
+
+  // 4) Attach tags to entry (ids + weights), persist updated themes
+  entry.theme_ids = entryTags.map(t => t.id);
+  entry.theme_weights = entryTags.map(t => t.weight);
+  await setSetting('themes_v1', themes);
+
+  // 5) Save entry as usual
   const db = await dbPromise;
   await db.put('entries', entry);
+  console.log('Entry: ', entry)
   await checkBackupReminder();
 }
+
 
 
 
@@ -361,6 +425,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   await ensureBackupSettingsDefaults();
   wireBackupModal();
   checkBackupReminder();
+  // in app.js, at boot after DOMContentLoaded begins
+  await loadModel();
+
 });
 
 
@@ -439,7 +506,7 @@ async function populateEntryModal(entry, modal) {
         const readMore = document.createElement("a");
         readMore.href = "#";
         readMore.className = "read-more-link";
-        readMore.textContent = " …read more";
+        readMore.textContent = " … read more";
         readMore.addEventListener("click", (e) => {
           e.preventDefault();
           openStackedEntryModal(rel);
@@ -837,8 +904,7 @@ async function displayRecentEntries(newEntry = null) {
       };
 
       await saveEntry(entry);
-      console.log("Saved entry:", entry);
-
+      
       entryInput.value = "";
       charCount.textContent = `${maxChars} characters remaining`;
 
