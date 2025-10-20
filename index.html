@@ -81,7 +81,8 @@
   <!-- 🔍 Modal: View a Specific Entry -->
   <div id="entryModal" class="modalOverlay hidden">
     <div class="modalBox entry-modal-box">
-      <button class="close-button" id="closeModal">&times;</button>
+      <button class="close-button close-button--entry" id="closeModal" aria-label="Close modal">&times;</button>
+
       <div id="modalContent"  class="modalContent">
         <div id="modalDate" class="modal-date"></div>
         <div id="modalPrompt" class="modal-prompt"></div>
@@ -188,7 +189,7 @@
   
 
     <div class="modal-actions" style="margin-top: 1rem;">
-      <button id="backupNowBtn" class="primary-button">Backup now</button>
+      <button id="backupNowBtn" class="secondary-button">Backup now</button>
       <button id="closeBackupModalBtn2" class="secondary-button">Close</button>
     </div>
 

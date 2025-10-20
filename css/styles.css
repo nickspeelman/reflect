@@ -163,6 +163,19 @@ ul#entryList li {
   cursor: pointer;
 }
 
+/* Optional: shared tweaks just for this modal’s button */
+.close-button.close-button--entry {
+  /* e.g., slightly larger tap target without changing layout */
+  padding: 4px;
+}
+
+/* On mobile, make it black */
+@media (max-width: 768px) {
+  .close-button.close-button--entry {
+    color: black;
+  }
+}
+
 
 #modalPrompt {
   font-weight: bold;
