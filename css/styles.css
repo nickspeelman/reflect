@@ -736,3 +736,21 @@ ul#entryList li {
   word-break: break-word;
 }
 
+/* Normal text links: unclicked = bold + white; clicked = light grey */
+a:not(.button-link):not(.floating-about):not(.floating-past):not(#closeReview):not(.modal-link):link {
+  color: #fff;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+a:not(.button-link):not(.floating-about):not(.floating-past):not(#closeReview):not(.modal-link):visited {
+  color: #bbb; /* light grey */
+  text-decoration: underline;
+}
+
+/* Optional: consistent hover/focus */
+a:hover,
+a:focus {
+  text-decoration: none;
+}
+
