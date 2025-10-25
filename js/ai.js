@@ -9,17 +9,29 @@ export async function loadModel() {
   if (embeddingModel) return embeddingModel;
   if (embeddingModelPromise) return embeddingModelPromise;
 
-  const { pipeline } = window.transformers;
+  const { pipeline, env } = window.transformers;
+
+  // Make sure embed model also respects local-only + wasm paths,
+  // same as sentiment
+  if (env?.backends?.onnx?.wasm) {
+    env.backends.onnx.wasm.wasmPaths = '/vendor/transformers-2.17.2/dist/';
+  }
+  env.allowRemoteModels = true;
+  env.localModelPath = '/models';
 
   embeddingModelPromise = pipeline(
     'feature-extraction',
     'Xenova/all-MiniLM-L6-v2',
-    { quantized: true } // must match the ONNX file you included
+    {
+      quantized: false,        // <-- CHANGE THIS
+      progress_callback: x => console.log('[embedding model]', x)
+    }
   ).then(p => (embeddingModel = p))
    .catch(e => { embeddingModelPromise = null; throw e; });
 
   return embeddingModelPromise;
 }
+
 
 
 // ai.js (hardened local sentiment loader)
