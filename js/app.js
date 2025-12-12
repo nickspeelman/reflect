@@ -36,6 +36,27 @@ if (typeof window !== 'undefined') {
   // window.debug.ensureThemesIndex = ensureThemesIndex;
 }
 
+let _scrollY = 0;
+
+function lockBodyScroll() {
+  _scrollY = window.scrollY || 0;
+  document.body.style.position = "fixed";
+  document.body.style.top = `-${_scrollY}px`;
+  document.body.style.left = "0";
+  document.body.style.right = "0";
+  document.body.style.width = "100%";
+}
+
+function unlockBodyScroll() {
+  document.body.style.position = "";
+  document.body.style.top = "";
+  document.body.style.left = "";
+  document.body.style.right = "";
+  document.body.style.width = "";
+  window.scrollTo(0, _scrollY);
+}
+
+
 
 
 // --- Restore (import) from a JSON backup file ---
@@ -107,6 +128,38 @@ function mountInPortal(el) {
   }
   portal.appendChild(el);
 }
+
+function ensureModalPortal() {
+  let portal = document.getElementById('modal-root');
+  if (!portal) {
+    portal = document.createElement('div');
+    portal.id = 'modal-root';
+    document.body.appendChild(portal);
+  } else if (portal.parentElement !== document.body) {
+    // Move it to the end of <body> so it's above app content
+    document.body.appendChild(portal);
+  }
+
+  // Move any existing modal overlays into the portal
+  const modalIds = [
+    'entryModal',
+    'allEntriesModal',
+    'welcomeModal',
+    'relevantEntriesModal',
+    'backupModal',
+    'processingSplash'
+  ];
+
+  for (const id of modalIds) {
+    const el = document.getElementById(id);
+    if (el && el.parentElement !== portal) {
+      portal.appendChild(el);
+    }
+  }
+
+  return portal;
+}
+
 
 function makeSnippet(text, max = 150) {
   const s = String(text || '');
@@ -184,6 +237,8 @@ async function openEntryModal(entry) {
   const modal = document.getElementById("entryModal");
   await populateEntryModal(entry, modal);
   modal.classList.remove("hidden");
+  bringModalToFront(modal);
+;
 
 
 
@@ -242,7 +297,12 @@ async function openStackedEntryModal(entry) {
   }
 
   // ✅ Append to DOM before populating (important!)
-  document.body.appendChild(clone);
+  const portal = ensureModalPortal();
+  clone.style.zIndex = 11000 + modalCount;
+
+  clone.dataset.stack = "entry";
+  portal.appendChild(clone);
+
   console.log("Child appended")
 
   // ✅ Wait for browser to register it in DOM
@@ -320,6 +380,21 @@ function closeBackupModal() {
   backupModalReturnFocus = null;
 }
 
+function bringModalToFront(modalEl) {
+    if (!modalEl) return;
+
+    // Base z for all modals in the portal
+    let z = 10000;
+
+    // Reset everyone to base (keeps things predictable)
+    document.querySelectorAll('#modal-root .modalOverlay').forEach(m => {
+      m.style.zIndex = z;
+    });
+
+    // Put this one on top
+    modalEl.style.zIndex = z + 1000;
+ }
+
 
 function wireBackupModal() {
   const openLink = document.getElementById('openBackupModalLink');
@@ -352,6 +427,9 @@ function wireBackupModal() {
       }
     });
   }
+
+
+
 
     const restoreInput = document.getElementById('restoreFileInput');
   restoreInput?.addEventListener('change', async (e) => {
@@ -421,6 +499,7 @@ async function refreshBackupModalUI() {
 
 // Call this during your app init / DOMContentLoaded
 document.addEventListener('DOMContentLoaded', async () => {
+  ensureModalPortal();
   // make sure defaults exist (Step 1)
   await ensureBackupSettingsDefaults();
   wireBackupModal();
@@ -439,20 +518,28 @@ async function showEntryModal(entry) {
   const clone = template.content.firstElementChild.cloneNode(true);
   const modal = clone;
 
+  // mark as "stacked entry" so your CSS z-order rule can apply
+  modal.dataset.stack = "entry";
+
   // Position and stack
   modal.style.position = "fixed";
-  modal.style.zIndex = 2000 + modalCount;
+  modal.style.zIndex = 11000 + modalCount; // 👈 put it ABOVE the portal modals
 
   // Close button
   const closeBtn = modal.querySelector(".close-button");
   closeBtn.addEventListener("click", () => modal.remove());
 
-  // Append before populating
-  document.body.appendChild(modal);
+  // Append BEFORE populating (but append into the portal, not body)
+  const portal = document.getElementById("modal-root");
+  (portal || document.body).appendChild(modal);
 
   // Populate content
   await populateEntryModal(entry, modal);
+
+  // ensure it is visible
+  modal.classList.remove("hidden");
 }
+
 
 async function populateEntryModal(entry, modal) {
   const modalDate = modal.querySelector(".modal-date");
@@ -475,9 +562,16 @@ async function populateEntryModal(entry, modal) {
   p.textContent = entry.response || "";
   modalResponse.appendChild(p);
 
-  // Related entries
   relatedContainer.innerHTML = "";
   relatedContainer.classList.add("hidden");
+
+  // ✅ Always add a label at the top (will only show if entries exist)
+  const label = document.createElement("div");
+  label.className = "related-entries-explanation";
+  label.textContent =
+    "These entries were shown as related when this entry was created.";
+  relatedContainer.appendChild(label);
+
 
   const ids = Array.isArray(entry.relatedEntryIds) ? entry.relatedEntryIds : [];
   if (ids.length > 0) {
@@ -688,6 +782,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const hasSeenWelcome = await db.get('settings', 'hasSeenWelcome');
   if (!hasSeenWelcome) {
     welcomeModal.classList.remove("hidden");
+    unlockBodyScroll();
   }
 
   const savedSearchMode = await getSetting("entrySearchMode") || "text";
@@ -722,9 +817,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   dismissWelcome.addEventListener("click", async () => {
     welcomeModal.classList.add("hidden");
+    unlockBodyScroll();
     await db.put('settings', true, 'hasSeenWelcome');
   });
   reopenWelcome.addEventListener("click", () => {
+    lockBodyScroll();
     welcomeModal.classList.remove("hidden");
   });
 
@@ -732,10 +829,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (e.key === "Escape") {
       if (!welcomeModal.classList.contains("hidden")) {
         welcomeModal.classList.add("hidden");
+        unlockBodyScroll();
         await setSetting("hasSeenWelcome", true);
 
       }
       allEntriesModal.classList.add("hidden");
+      bringModalToFront(allEntriesModal);
       modal.classList.add("hidden");
     }
   });
@@ -751,6 +850,7 @@ viewAllLink.addEventListener("click", async () => {
 
   closeAllEntries.addEventListener("click", () => {
     allEntriesModal.classList.add("hidden");
+    bringModalToFront(allEntriesModal);
   });
 
   closeModal.addEventListener("click", () => {
@@ -1106,6 +1206,7 @@ function showAllEntriesResults(entries, isSearch = false) {
   }
 
   document.getElementById("allEntriesModal").classList.remove("hidden");
+  bringModalToFront(allEntriesModal);
   attachEntryListeners();
 }
 

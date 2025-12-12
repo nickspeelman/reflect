@@ -112,8 +112,8 @@
          
         </div>
          <div class="search-button-row">
-           <button id="entrySearchButton">Search</button>
-           <button id="clearSearchButton">Clear Search</button>
+           <button id="entrySearchButton" class="secondary-button">Search</button>
+           <button id="clearSearchButton" class="secondary-button">Clear Search</button>
           </div>
       </div>
 
@@ -188,7 +188,7 @@
   
 
     <div class="modal-actions" style="margin-top: 1rem;">
-      <button id="backupNowBtn" class="primary-button">Backup now</button>
+      <button id="backupNowBtn" class="secondary-button">Backup now</button>
       <button id="closeBackupModalBtn2" class="secondary-button">Close</button>
     </div>
 
@@ -199,10 +199,23 @@
       <p><strong>Last backup:</strong> <span id="lastBackupLabel">Never</span></p>
     </div>
 
-    <label for="backupThresholdInput" class="label" style="display:block;margin-top:.75rem;">
-      Remind me every N new entries (0 = never):
+    <label for="backupThresholdInput" class="label">
+      Remind me to back up every
+      <input
+        id="backupThresholdInput"
+        type="number"
+        min="0"
+        step="1"
+        value="10"
+        class="inline-number"
+        aria-describedby="backupThresholdHelp"
+      >
+      entries
     </label>
-    <input id="backupThresholdInput" type="number" min="0" step="1" value="10" style="max-width:10ch;">
+
+    <div id="backupThresholdHelp" class="helper-text muted">
+      Set to 0 to turn reminders off
+</div>
 
   </div>
 </div>
